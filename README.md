@@ -12,7 +12,7 @@
     - CAvgDecimalCache
     - CFileDictionary
     - SecureStore
-  - StaticExtensions library of helper extensions I use. https://github.com/mmeents/StaticExtentions
+  - StaticExtensions library of helper extensions I use. https://github.com/mmeents/StaticExtensions
         
 ## Chapter 2. Market Viewer
   - Viewer App
@@ -23,5 +23,6 @@
     - Feeds Processing
     - Signal Production
     - Trade Simulating
+
 
 
