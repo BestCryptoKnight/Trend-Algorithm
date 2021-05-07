@@ -1,7 +1,7 @@
 # CryptoRockets
   - Attempts at profitable simulated trading algos
     
-##Chapter 1. Components and Settings
+## Chapter 1. Components and Settings
   - AppCrypto
     - INI file support objects for file IO. thanks https://www.codeproject.com/Articles/20120/INI-Files  by Jacek Gajek 
     - CObjects 
@@ -11,7 +11,7 @@
     - CFileDictionary
     - SecureStore
         
-##Chapter 2. Market Viewer
+## Chapter 2. Market Viewer
   - Viewer App
     - Secure Settings
     - Market Data Structure
