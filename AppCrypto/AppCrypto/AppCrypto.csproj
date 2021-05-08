@@ -31,6 +31,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="StaticExtensions">
+      <HintPath>..\..\..\StaticExtensions\bin\Debug\StaticExtensions.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Windows.Forms" />
@@ -47,12 +50,6 @@
     <Compile Include="CStore.cs" />
     <Compile Include="IniFiles.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\..\StaticExtentions\StaticExtents\StaticExtentions\StaticExtentions.csproj">
-      <Project>{092c6aba-9135-4319-a885-f89e7f4ade93}</Project>
-      <Name>StaticExtentions</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

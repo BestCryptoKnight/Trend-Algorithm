@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Security.Cryptography;
-using StaticExtentions;
+using StaticExtensions;
 
 namespace AppCrypto {
 

@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using StaticExtentions;
+using StaticExtensions;
 
 namespace AppCrypto {
 
