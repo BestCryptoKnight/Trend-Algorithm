@@ -33,12 +33,6 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Bittrex.Net">
-      <HintPath>..\Bittrex.Net\Bittrex.Net\bin\Debug\netstandard2.1\Bittrex.Net.dll</HintPath>
-    </Reference>
-    <Reference Include="CryptoExchange.Net">
-      <HintPath>..\CryptoExchange.Net\CryptoExchange.Net\bin\Debug\netstandard2.1\CryptoExchange.Net.dll</HintPath>
-    </Reference>
     <Reference Include="Microsoft.AspNet.SignalR.Client, Version=2.4.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>packages\Microsoft.AspNet.SignalR.Client.2.4.1\lib\net45\Microsoft.AspNet.SignalR.Client.dll</HintPath>
     </Reference>
@@ -175,6 +169,14 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Bittrex.Net\Bittrex.Net\Bittrex.Net.csproj">
+      <Project>{36419269-1bfa-4178-b1f7-a499953b68d1}</Project>
+      <Name>Bittrex.Net</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\CryptoExchange.Net\CryptoExchange.Net\CryptoExchange.Net.csproj">
+      <Project>{5e096cd6-34e1-4a07-b46f-e85313fa98af}</Project>
+      <Name>CryptoExchange.Net</Name>
+    </ProjectReference>
     <ProjectReference Include="AppCrypto\AppCrypto\AppCrypto.csproj">
       <Project>{29dc6f29-a322-40e2-8b49-6222ae540b72}</Project>
       <Name>AppCrypto</Name>

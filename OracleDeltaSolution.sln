@@ -7,6 +7,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OracleDelta", "OracleDelta.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AppCrypto", "AppCrypto\AppCrypto\AppCrypto.csproj", "{29DC6F29-A322-40E2-8B49-6222AE540B72}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Bittrex.Net", "..\Bittrex.Net\Bittrex.Net\Bittrex.Net.csproj", "{36419269-1BFA-4178-B1F7-A499953B68D1}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CryptoExchange.Net", "..\CryptoExchange.Net\CryptoExchange.Net\CryptoExchange.Net.csproj", "{5E096CD6-34E1-4A07-B46F-E85313FA98AF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +25,14 @@ Global
 		{29DC6F29-A322-40E2-8B49-6222AE540B72}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{29DC6F29-A322-40E2-8B49-6222AE540B72}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{29DC6F29-A322-40E2-8B49-6222AE540B72}.Release|Any CPU.Build.0 = Release|Any CPU
+		{36419269-1BFA-4178-B1F7-A499953B68D1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{36419269-1BFA-4178-B1F7-A499953B68D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{36419269-1BFA-4178-B1F7-A499953B68D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{36419269-1BFA-4178-B1F7-A499953B68D1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5E096CD6-34E1-4A07-B46F-E85313FA98AF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5E096CD6-34E1-4A07-B46F-E85313FA98AF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5E096CD6-34E1-4A07-B46F-E85313FA98AF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5E096CD6-34E1-4A07-B46F-E85313FA98AF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

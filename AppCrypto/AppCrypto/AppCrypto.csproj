@@ -48,6 +48,7 @@
     <Compile Include="CFileDictionary.cs" />
     <Compile Include="CObjects.cs" />
     <Compile Include="CStore.cs" />
+    <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="IniFiles.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
