@@ -20,27 +20,29 @@ namespace OracleAlpha {
   public partial class Form1 : Form {
     public string CallSign = "BittrexTrader";
     public string SettingsKey = "BittrexKP";
-    public string[] DefBaseCoins = { "USDT", "USD", "BTC", "ETH" };
-    public CObject BaseCoins;
-        //  public string[] MarketFilter = { "USD-BTC", "USD-ADA", "BTC-ADA" };
     public string[] DefMarketList = {
-      "USD-BTC", "USD-ETH", "BTC-ETH",
-      "USD-ADA", "BTC-ADA", "ETH-ADA",
-      "USD-LINK", "BTC-LINK", "ETH-LINK"
-  //    "USD-DGB", "BTC-DGB", "ETH-DGB"
+      "USD-BTC", 
+      "USD-ADA", "BTC-ADA", 
+      "USD-DGB", "BTC-DGB",
+      "USD-LTC", "BTC-LTC",
+      "USD-DOGE", "BTC-DOGE"
     };
-
-    public CObject MarketFilter; //= { "USD-BTC"
+//  "ETH-DGB", "ETH-ADA","ETH-LINK", "USD-ETH", "BTC-ETH","USD-LINK", "BTC-LINK",
+  
+    public CObject MarketFilter; 
     public CObject MarketFilterBittrex;
 
     public BittrexSocketClient BSC;
     public SecureStore Settings;
 
     public CMarkets Markets;
-    public CBalances Balances;
+    public CPositions Positions;
     public CTickerQueue TickersLanding;
+    
     public string LastTicSeq = "";
     public Int32 iDisplayMode = 0;
+    public Int32 iOpMode = 0;
+    
     public float fWidth = 0, fHeight = 0;
     public double f20Height = 0.2;
     public double f05Height = 0.065;
@@ -48,10 +50,18 @@ namespace OracleAlpha {
     public double f20Width = 0.2;
     public double f15Width = 0.15;
     public double f05Width = 0.05;
+    public SizeF OneChar;
+    public Single iCW;
+    public Single iRowH;
+    public decimal grLeft;
+    public decimal grTop;
+    public decimal grWidth;
+    public decimal grHeight;
+    public decimal grHeightT;
+    public Int32 iCoinCount;
 
     public Font fCur10; Font fCur9; Font fCur8; Font fCur7; Font fCur6;
-    public Color ColorDefBack;
-
+    
     string SettingsFilePath;
     string SettingsFileName;
 
@@ -64,6 +74,9 @@ namespace OracleAlpha {
     Decimal LastPrice = 0;
     Decimal StopPrice = 0;
     Decimal ExitMin = 0;
+    string LastMessage = "";
+    public string BuyBase = "";
+    public string BuyQuote = "";
 
     public Form1() {
       InitializeComponent();
@@ -71,24 +84,26 @@ namespace OracleAlpha {
 
     private void Form1_Load(object sender, EventArgs e) {
       
-      fCur10 = new Font("Courier New", 10); fCur9 = new Font("Courier New", 9); fCur8 = new Font("Courier New", 8);
+      fCur10 = new Font("Courier New", 10); fCur9 = new Font("Courier New", 9); fCur8 = new Font("Courier New", 8); 
       fCur7 = new Font("Courier New", 7); fCur6 = new Font("Courier New", 6);
-      ColorDefBack = ColorTranslator.FromHtml("#08180F");
-
+      
       ServicePointManager.Expect100Continue = true;
       ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
 
-      BaseCoins = DefBaseCoins.toCObject();
       MarketFilter = DefMarketList.toCObject();
-      MarketFilterBittrex = new CObject();
+      
+      MarketFilterBittrex = new CObject();  // markets are reversed when subscribing to feed
       foreach (string sMarket in MarketFilter.Keys) {
         MarketFilterBittrex[sMarket.ParseReverse("-", "-")] = sMarket;
       }
 
       Markets = new CMarkets(MarketFilter);
-      Balances = new CBalances(Markets);
-      TickersLanding = new CTickerQueue(Markets);
+      iCoinCount = Markets.Coins.Keys.Count;
+      Positions = new CPositions(Markets);
+      Positions.AddUSD(20000);  // give some credits
 
+      TickersLanding = new CTickerQueue(Markets);
+      
       SettingsFilePath = DllExt.MMConLocation();
       if (!Directory.Exists(SettingsFilePath)) Directory.CreateDirectory(SettingsFilePath);
       SettingsFileName = SettingsFilePath + "\\" + CallSign + "Settings.ini";
@@ -133,23 +148,21 @@ namespace OracleAlpha {
       }
     }
 
-    delegate void UpdateControlVisibilityCallback();
+   
 
     private Boolean LoadingEditors = false;
-    private void LoadEditors()
-        {
-            LoadingEditors = true;
-            if (Settings is SecureStore)
-            {
-                LastAmount = (Settings["LastAmount"] == "" ? 10000 : Settings["LastAmount"].toDecimal());
-                LastCur = (Settings["LastCur"] == "" ? "USD" : Settings["LastCur"].toString());
-                LastPrice = (Settings["LastPrice"] == "" ? 1 : Settings["LastPrice"].toDecimal());
-                edLastPrice.Value = LastPrice;
-                cbStartCur.SelectedItem = LastCur;
-                edStarting.Value = LastAmount;
-            }
-            LoadingEditors = false;
-        }
+    private void LoadEditors() {
+      LoadingEditors = true;
+      if (Settings is SecureStore)
+      {
+          LastAmount = (Settings["LastAmount"] == "" ? 10000 : Settings["LastAmount"].toDecimal());
+          LastCur = (Settings["LastCur"] == "" ? "USD" : Settings["LastCur"].toString());
+          LastPrice = (Settings["LastPrice"] == "" ? 1 : Settings["LastPrice"].toDecimal());
+          edLastPrice.Value = LastPrice;
+          edQuantity.Value = LastAmount;
+      }
+      LoadingEditors = false;
+    }
     private void SaveEditors()
     {
         if (Settings is SecureStore)
@@ -160,353 +173,489 @@ namespace OracleAlpha {
         }
     }
     #endregion
-    private void DoUpdateControlVisibility()
-    {
-        if (this.InvokeRequired)
-        {
-            UpdateControlVisibilityCallback d = new UpdateControlVisibilityCallback(DoUpdateControlVisibility);
-            this.Invoke(d, new object[] { });
-        }
-        else
-        {
-            if (this.Visible)
-            {
 
-                Form1_ResizeEnd(null, null);
+    private void Form1_ResizeEnd(object sender, EventArgs e) {
+      Graphics g = this.CreateGraphics();
+      try {
 
-                if ((iDisplayMode == 0) || (iDisplayMode == 86) || (iDisplayMode == 30))
-                {
+        fWidth = g.VisibleClipBounds.Width;
+        fHeight = g.VisibleClipBounds.Height;
 
-                    cbTrack.Left = (fWidth * 0.015).toInt32();
-                    cbTrack.Top = (fHeight * 0.055).toInt32();
-                    edStarting.Top = cbTrack.Top;
-                    cbStartCur.Top = cbTrack.Top;
-                    edLastPrice.Top = cbTrack.Top;
-                    edStarting.Left = cbTrack.Width + cbTrack.Left + 2;
-                    cbStartCur.Left = edStarting.Left + edStarting.Width + 2;
-                    edLastPrice.Left = cbStartCur.Left + cbStartCur.Width + 2;
-                    btnExit.Left = edLastPrice.Left + edLastPrice.Width + 2;
-                    btnExit.Top = cbTrack.Top;
-                    if (label1.Visible) label1.Visible = false;
-                    if (label2.Visible) label2.Visible = false;
-                    if (label3.Visible) label3.Visible = false;
-                    if (textBox1.Visible) textBox1.Visible = false;
-                    if (textBox2.Visible) textBox2.Visible = false;
-                    if (textBox3.Visible) textBox3.Visible = false;
-                    if (btnContinue.Visible) btnContinue.Visible = false;
-                    // if (!edOut.Visible) edOut.Visible = true;
-                    if (!edTradeHist.Visible) edTradeHist.Visible = true;
-                    if (!cbTrack.Visible) cbTrack.Visible = true;
-                    if (cbTrack.Checked)
-                    {
-                        edStarting.Visible = false;
-                        cbStartCur.Visible = false;
-                        edLastPrice.Visible = false;
-                    }
-                    else
-                    {
-                        edStarting.Visible = true;
-                        cbStartCur.Visible = true;
-                        edLastPrice.Visible = true;
-                    }
-                    if ((cbTrack.Checked) && (Markets.Coins.CurUpCoin != LastCur))
-                    {
-                        if (!btnExit.Visible) btnExit.Visible = true;
-                    }
-                    else
-                    {
-                        if (btnExit.Visible) btnExit.Visible = false;
-                    }
-                }
+        OneChar = g.MeasureString("W00W", fCur9);
+        iCW = OneChar.Width;
 
-                if (iDisplayMode == 10)
-                {
-                    if (!label1.Visible) label1.Visible = true;
-                    if (!label2.Visible) label2.Visible = true;
-                    if (!label3.Visible) label3.Visible = true;
-                    if (!textBox1.Visible) textBox1.Visible = true;
-                    if (!textBox2.Visible) textBox2.Visible = true;
-                    if (!textBox3.Visible) textBox3.Visible = true;
-                    if (!btnContinue.Visible) btnContinue.Visible = true;
-                    if (edOut.Visible) edOut.Visible = false;
-                    if (edTradeHist.Visible) edTradeHist.Visible = false;
-                    if (edStarting.Visible) edStarting.Visible = false;
-                    if (cbTrack.Visible) cbTrack.Visible = false;
-                    if (cbStartCur.Visible) cbStartCur.Visible = false;
-                    if (edLastPrice.Visible) edLastPrice.Visible = false;
-                    if (btnExit.Visible) btnExit.Visible = false;
-                }
+        f20Height = fHeight * 0.2;
+        f05Height = fHeight * 0.065;
+        f15Height = fHeight * 0.145;
+        f20Width = fWidth * 0.2;
+        f15Width = fWidth * 0.15;
+        f05Width = fWidth * 0.05;
 
-                if (iDisplayMode == 20)
-                {
-                    if (!label1.Visible) label1.Visible = true;
-                    if (label2.Visible) label2.Visible = false;
-                    if (label3.Visible) label3.Visible = false;
-                    if (!textBox1.Visible) textBox1.Visible = true;
-                    if (textBox2.Visible) textBox2.Visible = false;
-                    if (textBox3.Visible) textBox3.Visible = false;
-                    if (!btnContinue.Visible) btnContinue.Visible = true;
-                    if (edOut.Visible) edOut.Visible = false;
-                    if (edTradeHist.Visible) edTradeHist.Visible = false;
-                    if (edStarting.Visible) edStarting.Visible = false;
-                    if (cbTrack.Visible) cbTrack.Visible = false;
-                    if (cbStartCur.Visible) cbStartCur.Visible = false;
-                    if (edLastPrice.Visible) edLastPrice.Visible = false;
-                    if (btnExit.Visible) btnExit.Visible = false;
-                }
+        Single iMCW = fWidth / iCW;
+        Single iRow = Convert.ToSingle(fHeight * 0.12);
+        Single AreaMaxHeight = Convert.ToSingle(edTradeHist.Top - iRow - 1);
+        iRowH = AreaMaxHeight / 37;
+        
+        grLeft = Convert.ToDecimal(iCW * 14.6 + fWidth * 0.015);
+        grTop = Convert.ToDecimal(iRow + (iRowH * 1.5));
+        grWidth = Convert.ToDecimal(fWidth.toDecimal() * 0.995m - (grLeft));
+        grHeight = Convert.ToDecimal(iRowH * 27);
+        grHeightT = Convert.ToDecimal(iRowH * 5);
 
-
-            }
-        }
+      } finally {
+        g.Dispose();
+      }
     }
 
+    delegate void UpdateControlVisibilityCallback();
+    private void DoUpdateControlVisibility() {
+      if (this.InvokeRequired) {
+        UpdateControlVisibilityCallback d = new UpdateControlVisibilityCallback(DoUpdateControlVisibility);
+        this.Invoke(d, new object[] { });
+      } else {
+        if (this.Visible) {
+
+          Form1_ResizeEnd(null, null);
+
+          if (iDisplayMode == 30) {
+
+            cbTrack.Left = (fWidth * 0.015).toInt32();
+            cbTrack.Top = (fHeight * 0.055).toInt32();
+            decimal iLeft = (fWidth.toDecimal() * 0.015m) + (iCW.toDecimal() / 2);
+            edQuantity.Top = (grTop + iRowH.toDecimal() * 4).toInt32T();
+            edLastPrice.Top = (grTop + iRowH.toDecimal() * 8).toInt32T();
+
+            edQuantity.Left = (iLeft + iCW.toDecimal() * 13).toInt32T();
+            edLastPrice.Left = edQuantity.Left;            
+                        
+            btnExit.Left = edLastPrice.Left + edLastPrice.Width + 2;
+            btnExit.Top = cbTrack.Top;
+            if (label1.Visible) label1.Visible = false;
+            if (label2.Visible) label2.Visible = false;
+            if (label3.Visible) label3.Visible = false;
+            if (textBox1.Visible) textBox1.Visible = false;
+            if (textBox2.Visible) textBox2.Visible = false;
+            if (textBox3.Visible) textBox3.Visible = false;
+            if (btnContinue.Visible) btnContinue.Visible = false;
+            // if (!edOut.Visible) edOut.Visible = true;
+            if (!edTradeHist.Visible) edTradeHist.Visible = true;
+            if (!cbTrack.Visible) cbTrack.Visible = false;           
+            // if ((cbTrack.Checked) && (Markets.Coins.CurUpCoin != LastCur)) {
+            // if (!btnExit.Visible) btnExit.Visible = true;
+            if (btnExit.Visible) btnExit.Visible = false;
+            
+            if ((iOpMode == 10) && (BuyQuote != "") && (BuyBase != "")) {
+              if(!edQuantity.Visible) edQuantity.Visible = true;
+              if(!edLastPrice.Visible) edLastPrice.Visible = true;
+            } else if (iOpMode == 0) {
+              if (edQuantity.Visible) edQuantity.Visible = false;
+              if (edLastPrice.Visible) edLastPrice.Visible = false;
+            }
+
+          }
+
+          if (iDisplayMode == 10) {
+            if (!label1.Visible) label1.Visible = true;
+            if (!label2.Visible) label2.Visible = true;
+            if (!label3.Visible) label3.Visible = true;
+            if (!textBox1.Visible) textBox1.Visible = true;
+            if (!textBox2.Visible) textBox2.Visible = true;
+            if (!textBox3.Visible) textBox3.Visible = true;
+            if (!btnContinue.Visible) btnContinue.Visible = true;
+            if (edOut.Visible) edOut.Visible = false;
+            if (edTradeHist.Visible) edTradeHist.Visible = false;
+            if (edQuantity.Visible) edQuantity.Visible = false;
+            if (cbTrack.Visible) cbTrack.Visible = false;            
+            if (edLastPrice.Visible) edLastPrice.Visible = false;
+            if (btnExit.Visible) btnExit.Visible = false;
+          }
+
+          if (iDisplayMode == 20) {
+            if (!label1.Visible) label1.Visible = true;
+            if (label2.Visible) label2.Visible = false;
+            if (label3.Visible) label3.Visible = false;
+            if (!textBox1.Visible) textBox1.Visible = true;
+            if (textBox2.Visible) textBox2.Visible = false;
+            if (textBox3.Visible) textBox3.Visible = false;
+            if (!btnContinue.Visible) btnContinue.Visible = true;
+            if (edOut.Visible) edOut.Visible = false;
+            if (edTradeHist.Visible) edTradeHist.Visible = false;
+            if (edQuantity.Visible) edQuantity.Visible = false;
+            if (cbTrack.Visible) cbTrack.Visible = false;           
+            if (edLastPrice.Visible) edLastPrice.Visible = false;
+            if (btnExit.Visible) btnExit.Visible = false;
+          }
+
+
+        }
+      }
+    }
+
+    private void Form1_MouseDown(object sender, MouseEventArgs e) {
+
+      Single iLeft = Convert.ToSingle(fWidth * 0.015 + (iCW / 2));
+      decimal iWM = (grLeft - iLeft.toDecimal()) / (iCoinCount - 1);
+           
+      if (iDisplayMode == 30) {
+
+        if (e.Y >grTop - grHeightT && e.Y < grTop - iRowH.toDecimal() &&
+          e.X > iLeft && e.X < iLeft.toDecimal() + iWM * (iCoinCount-1)) {
+          int btnX = ((e.X.toDecimal() - iLeft.toDecimal())/iWM).toInt32T();
+          var m = Markets.Coins.Keys.OrderBy(x => x);
+          if (btnX < m.Count()) {
+            int iX = 0;
+            foreach (string sCoin in m) {
+              if (btnX == iX) {
+                BuyQuote = sCoin;
+                BuyBase = Positions.BiggestBaseCoin();
+                string sQuoteMarket = BuyBase+'-'+BuyQuote;
+                CMarket cm = Markets.Coins[sCoin][sQuoteMarket];
+                edLastPrice.Value = cm.Ask.toDecimal();
+                edQuantity.Value = Positions.Balance(BuyBase) / cm.Ask.toDecimal();
+              }
+              iX++;
+            }            
+          }   
+
+          if (BuyQuote != "") {
+            iOpMode = 10;            
+          }
+
+        } else if (e.X > Convert.ToInt32(iLeft + iCW * 3) && e.X < Convert.ToInt32(iLeft + iCW * 23) &&
+           e.Y > Convert.ToInt32(grTop) && e.Y < Convert.ToInt32(grTop + iRowH.toDecimal() * 20) ) {  
+          // in this case do nothing buypassing next else.
+
+        } else {
+          BuyQuote = "";
+          BuyBase = "";
+          iOpMode = 0;
+        }
+
+
+
+      }
+
+    }
     private void DoRedraw() {
 
-        DoUpdateControlVisibility();
+      DoUpdateControlVisibility();
 
-        Graphics g = this.CreateGraphics();
-        try
-        {
-            string es = "0";
-            BufferedGraphics bg = BufferedGraphicsManager.Current.Allocate(g, this.DisplayRectangle);
-            try
-            {
-                Int32 iP = 14;
-                // Int32 iW = 6;
-                SizeF OneChar = bg.Graphics.MeasureString("W00W", fCur9);
-                Single iCW = OneChar.Width;
-                Single iMCW = fWidth / iCW;
+      Graphics g = this.CreateGraphics();
+      try {
+        string es = "0";
+        BufferedGraphics bg = BufferedGraphicsManager.Current.Allocate(g, this.DisplayRectangle);
+        try {
+          Int32 iP = 14;
+          // Int32 iW = 6;
+          // 
+          Single iMCW = fWidth / iCW;
+          Single iRow = Convert.ToSingle(fHeight * 0.12);
+          Single iRowLastCur = iRow;
+          Single iLeft = Convert.ToSingle(fWidth * 0.015 + (iCW / 2));
+          string sRow = "";       
 
-                Single iRow = Convert.ToSingle(fHeight * 0.12);
-                Single iRowLastCur = iRow;
-                Single iLeft = Convert.ToSingle(fWidth * 0.05);
-                Single AreaMaxHeight = Convert.ToSingle(edTradeHist.Top - iRow - 1);
-                Single iRowH = AreaMaxHeight / 37;
+          decimal PriceChangeMax = 0;
+          decimal PriceChangeMin = 0;
 
-                string sRow = "";
-                string ThisUp = "";
-                decimal ThisAvgPriceUSD = 0;
-                decimal ThisAvgCount = 0;
-                decimal grLeft = Convert.ToDecimal(iCW * 13.6 + fWidth * 0.015);
-                decimal grTop = Convert.ToDecimal(iRow + (iRowH * 1.5));
-                decimal grWidth = Convert.ToDecimal(fWidth.toDecimal() * 0.995m - (grLeft));
-                decimal grHeight = Convert.ToDecimal(iRowH * 30);
+          #region chart outline
+          bg.Graphics.DrawRectangle(Pens.WhiteSmoke,
+            new Rectangle(
+              Convert.ToInt32(grLeft),
+              Convert.ToInt32(grTop),
+              Convert.ToInt32(grWidth),
+              Convert.ToInt32(grHeight)
+            )
+          );
 
-                decimal grTopT = Convert.ToDecimal(iRow + (iRowH * 1.5));
-                decimal grHeightT = Convert.ToDecimal(iRowH * 5);
+          bg.Graphics.DrawRectangle(Pens.WhiteSmoke,
+            new Rectangle(
+              Convert.ToInt32(grLeft),
+              Convert.ToInt32(grTop- grHeightT), //
+              Convert.ToInt32(grWidth),
+              Convert.ToInt32(grHeightT)
+            )
+          );
+          #endregion
 
-                decimal PriceChangeMax = 0;
-                decimal PriceChangeMin = 0;
+          #region draw in coins menu along top.
+          Int32 iCount = 0;
+          decimal iWM = (grLeft - iLeft.toDecimal())/(iCoinCount-1);
+          foreach(string sCoin in Markets.Coins.Keys.OrderBy(x => x)) {
+            if (sCoin != "USD") {
+              Color aC = Markets.Coins[sCoin].CoinColor;
+              Color aCUSD = Markets.Coins["USD"].CoinColor;
+              Color aCBTC = Markets.Coins["BTC"].CoinColor;
+              Pen aP = new Pen(aC, 1);
+              Brush abmm = new SolidBrush(aC);
+              Brush abUSD = new SolidBrush(aCUSD);
+              Brush abBTC = new SolidBrush(aCBTC);
 
-                // chart outline
-                bg.Graphics.DrawRectangle(Pens.WhiteSmoke,
-                  new Rectangle(
-                    Convert.ToInt32(grLeft),
-                    Convert.ToInt32(grTop),
-                    Convert.ToInt32(grWidth),
-                    Convert.ToInt32(grHeight)
-                  )
-                );
+              bg.Graphics.DrawRectangle(aP,
+                new Rectangle(
+                  Convert.ToInt32(iLeft.toDecimal() + iWM * iCount - (iCW / 2).toDecimal()),
+                  Convert.ToInt32(grTop - grHeightT), 
+                  Convert.ToInt32(iWM-2),
+                  Convert.ToInt32(grHeightT- iRowH.toDecimal())
+                )            
+              );
+              Decimal dAvgChange = Markets.Coins[sCoin].AvgChange;
+              Brush sbaa = (System.Math.Abs(dAvgChange) < 0.0005m ? Brushes.WhiteSmoke : ((dAvgChange < 0) ? Brushes.Red : Brushes.Chartreuse));
+              sRow = "    %" + (100 * dAvgChange).toStr4();
+              bg.Graphics.DrawString(sRow, fCur8, sbaa, Convert.ToSingle(iLeft.toDecimal() + iWM * iCount - (3 * iCW / 8).toDecimal()), Convert.ToSingle(iRow - (iRowH * 3.5)));
+              bg.Graphics.DrawString(sCoin, fCur8, abmm, Convert.ToSingle(iLeft.toDecimal() + iWM * iCount-(3 * iCW / 8).toDecimal()), Convert.ToSingle(iRow - (iRowH * 3.5)));
+                        
+              string sMarket = "USD-"+sCoin;
+              string sAskUSD = Markets.Coins[sCoin][sMarket].Ask.toStr4();
+              bg.Graphics.DrawString(sAskUSD, fCur8, abUSD, Convert.ToSingle(iLeft.toDecimal() + iWM * iCount - (3*iCW / 8).toDecimal()), Convert.ToSingle(iRow - (iRowH * 2.5)));
+            
+              if (sCoin != "BTC")  {
+                sMarket = "BTC-" + sCoin;
+                sAskUSD = Markets.Coins[sCoin][sMarket].Ask.toStr8();
+                bg.Graphics.DrawString(sAskUSD, fCur8, abBTC, Convert.ToSingle(iLeft.toDecimal() + iWM * iCount - (3*iCW / 8).toDecimal()), Convert.ToSingle(iRow - (iRowH * 1.5)));
+              }
 
-                bg.Graphics.DrawRectangle(Pens.WhiteSmoke,
-                  new Rectangle(
-                    Convert.ToInt32(grLeft),
-                    Convert.ToInt32(grTop - grHeightT),
-                    Convert.ToInt32(grWidth),
-                    Convert.ToInt32(grHeightT)
-                  )
-                );
+              iCount += 1;
+            }
+          }
+          #endregion
 
-                foreach (string sCoin in Markets.Coins.ByAvgChange())
-                {
+          #region draw in Markts by Avg Change 
+          foreach (string sCoin in Markets.Coins.ByAvgChange()) {
 
-                    iRow = Convert.ToSingle(iRow + iRowH);
-                    if (LastCur == sCoin)
-                    {
-                        iRowLastCur = iRow;
-                        var coincount = Markets.Coins.Keys.Count;
-                        Pen aG = new Pen(Markets.Coins[sCoin].CoinColor, 1);
-                        bg.Graphics.DrawRectangle(aG,    //  Selected Coin Rec
-                          new Rectangle(
-                            (fWidth * 0.015).toInt32(),
-                            (iRow - (iRowH * 0.5)).toDecimal().toInt32(),
-                            Convert.ToInt32(iCW * 13.5),
-                            (iRowH * (coincount + 2)).toInt32()
-                          )
-                        );
-                    }
-                    Decimal dAvgChange = Markets.Coins[sCoin].AvgChange;
+            iRow = Convert.ToSingle(iRow + iRowH);
+            decimal dCoin = Positions.Balance(sCoin);
+            if ( dCoin > 0.0005m)  {
+              decimal AvgBuyIn = Positions.AvgPrice(sCoin);
+              iRowLastCur = iRow;
+              Color aC = Markets.Coins[sCoin].CoinColor;
+              Pen aP = new Pen(aC, 1);
+              bg.Graphics.DrawRectangle(aP, new Rectangle( //  Selected Coin Rec
+                (fWidth * 0.015).toInt32(),
+                (iRow - (iRowH * 0.5)).toDecimal().toInt32(),
+                Convert.ToInt32(iCW * 13.5),
+                (iRowH * (iCoinCount + 2)).toInt32() ));
+              string standing = "" + dCoin.toStr8() + " " + sCoin + (sCoin != "USD" ? "  at " +  AvgBuyIn.toStr8(): "") +
+                "  $" + Markets.ToUSD(sCoin, AvgBuyIn).toStr2();
+              bg.Graphics.DrawString(standing, fCur8, Brushes.WhiteSmoke, Convert.ToSingle(fWidth * 0.015 + cbTrack.Width), iRowLastCur);
+            }
 
-                    Brush sbaa = (System.Math.Abs(dAvgChange) < 0.0005m ? Brushes.WhiteSmoke : ((dAvgChange < 0) ? Brushes.Red : Brushes.Chartreuse));
-                    sRow = "    %" + (100 * dAvgChange).toStr4();
-                    Color aCC = Markets.Coins[sCoin].CoinColor;
-                    Brush abmm = new SolidBrush(aCC);
+            Decimal dAvgChange = Markets.Coins[sCoin].AvgChange;
 
-                    // draw Coin info
-                    bg.Graphics.DrawString(sRow, fCur8, sbaa, Convert.ToSingle(iLeft), Convert.ToSingle(iRow));
-                    bg.Graphics.DrawString(sCoin, fCur8, abmm, Convert.ToSingle(iLeft), Convert.ToSingle(iRow));
-                    bg.Graphics.DrawString(Markets.Coins[sCoin].UpdateCount.toInt32T().toString(),
-                        fCur7, Brushes.WhiteSmoke, Convert.ToSingle(iLeft - (iCW / 2)), Convert.ToSingle(iRow));
+            Brush sbaa = (System.Math.Abs(dAvgChange) < 0.0005m ? Brushes.WhiteSmoke : ((dAvgChange < 0) ? Brushes.Red : Brushes.Chartreuse));
+            sRow = "    %" + (100 * dAvgChange).toStr4();
+            Color aCC = Markets.Coins[sCoin].CoinColor;
+            Brush abmm = new SolidBrush(aCC);
 
-                    iRow = Convert.ToSingle(iRow + iRowH);
-                    if (iRow > edTradeHist.Top) break;
+            bg.Graphics.DrawString(sRow, fCur8, sbaa, Convert.ToSingle(iLeft), Convert.ToSingle(iRow));
+            bg.Graphics.DrawString(sCoin, fCur8, abmm, Convert.ToSingle(iLeft), Convert.ToSingle(iRow));
+            bg.Graphics.DrawString(Markets.Coins[sCoin].UpdateCount.toInt32T().toString(),
+                fCur7, Brushes.WhiteSmoke, Convert.ToSingle(iLeft - (iCW / 2)), Convert.ToSingle(iRow));
 
-                    // draw Market data limit top 4
-                    Int32 iMarketCount = 0;
-                    foreach (string sMarket in Markets.Coins[sCoin].KeysByPriceDelta())  {
-                        iMarketCount++;
-                       // if (iMarketCount > 4) break;
-                        string sBaseCur = sMarket.ParseFirst("-");
-                        string sBaseM = " " + (sCoin == sBaseCur ? sMarket.ParseLast("-") : sBaseCur) + " ";
-                        decimal dAskDelta = Markets.Coins[sCoin][sMarket].AskDelta;
-                        decimal dBidDelta = Markets.Coins[sCoin][sMarket].BidDelta;
-                        CAvgDecimalCache dPC = Markets.Coins[sCoin][sMarket].PriceDeltaCache;
-                        decimal tv = dPC.SumMax;
-                        if (tv > PriceChangeMax) { PriceChangeMax = tv; }
-                        tv = dPC.SumMin;
-                        if (tv < PriceChangeMin) { PriceChangeMin = tv; }
-                        Color aC = Markets.Coins[sCoin].CoinColor;
-                        if (sCoin == sMarket.ParseFirst("-"))
-                        {
-                            aC = Markets.Coins[sCoin].CoinColor2;
-                        }
-                        Brush abm = new SolidBrush(aC);
-                        Brush sba = (System.Math.Abs(dAskDelta) < 0.0005m ? Brushes.WhiteSmoke : ((dAskDelta < 0) ? Brushes.Red : Brushes.Chartreuse));
-                        Brush sbb = (System.Math.Abs(dBidDelta) < 0.0005m ? Brushes.WhiteSmoke : ((dBidDelta < 0) ? Brushes.Red : Brushes.Chartreuse));
-                        sRow = sMarket;
+            iRow = Convert.ToSingle(iRow + iRowH);
+            if (iRow > edTradeHist.Top) break;
+            
+            // draw Market data
+            Int32 iMarketCount = 0;
+            foreach (string sMarket in Markets.Coins[sCoin].KeysByPriceDelta()) {
+              iMarketCount++;
+              // if (iMarketCount > 4) break;
+              string sBaseCur = sMarket.ParseFirst("-");
+              string sBaseM = " " + (sCoin == sBaseCur ? sMarket.ParseLast("-") : sBaseCur) + " ";
+              decimal dAskDelta = Markets.Coins[sCoin][sMarket].AskDelta;
+              decimal dBidDelta = Markets.Coins[sCoin][sMarket].BidDelta;
+              CAvgDecimalCache dPC = Markets.Coins[sCoin][sMarket].PriceDeltaCache;
+              
+              decimal tv = dPC.SumMax;
+              if (tv > PriceChangeMax) { PriceChangeMax = tv; }
+              tv = dPC.SumMin;
+              if (tv < PriceChangeMin) { PriceChangeMin = tv; }
+              
+              Color aC = Markets.Coins[sCoin].CoinColor;
+              if (sCoin == sMarket.ParseFirst("-")) {
+                aC = Markets.Coins[sCoin].CoinColor2;
+              }
+              Brush abm = new SolidBrush(aC);
+              Brush sba = (System.Math.Abs(dAskDelta) < 0.0005m ? Brushes.WhiteSmoke : ((dAskDelta < 0) ? Brushes.Red : Brushes.Chartreuse));
+              Brush sbb = (System.Math.Abs(dBidDelta) < 0.0005m ? Brushes.WhiteSmoke : ((dBidDelta < 0) ? Brushes.Red : Brushes.Chartreuse));
+              sRow = sMarket;
 
-                        string sPrice = " " + Markets.Coins[sCoin][sMarket].AvgPrice.toStr8P(iP) +
-                          sBaseM + (100 * ((dAskDelta + dBidDelta) / 2)).toStr2() + "%" + (((dAskDelta + dBidDelta) / 2) < 0 ? "↓" : "↑");
-                        string sAsks = " " + Markets.Coins[sCoin][sMarket].Ask.toStr8P(iP) +
-                          sBaseM + (100 * dAskDelta).toStr2() + "%" + (dAskDelta < 0 ? "↓" : "↑");
+              string sPrice = " " + Markets.Coins[sCoin][sMarket].AvgPrice.toStr8P(iP) +
+                sBaseM + (100 * ((dAskDelta + dBidDelta) / 2)).toStr2() + "%" + (((dAskDelta + dBidDelta) / 2) < 0 ? "↓" : "↑");
+              string sAsks = " " + Markets.Coins[sCoin][sMarket].Ask.toStr8P(iP) +
+                sBaseM + (100 * dAskDelta).toStr2() + "%" + (dAskDelta < 0 ? "↓" : "↑");
 
-                        string sBids = " " + Markets.Coins[sCoin][sMarket].BidAvg.toStr8P(iP) +
-                          sBaseM + Markets.Coins[sCoin][sMarket].AskAvg.toStr8P(iP) ;
-                        bg.Graphics.DrawString(Markets.Coins[sCoin][sMarket].UpdateCount.toInt32T().toString(),
-                          fCur7, abm, Convert.ToSingle(iLeft - (iCW / 2)), Convert.ToSingle(iRow));
-                        bg.Graphics.DrawString(sMarket, fCur7, abm, Convert.ToSingle(iLeft), Convert.ToSingle(iRow));
-                        bg.Graphics.DrawString(sPrice, fCur7, sba, Convert.ToSingle(iLeft + (iCW * 1.25)), Convert.ToSingle(iRow));
-                        bg.Graphics.DrawString(sBids, fCur7, sbb, Convert.ToSingle(iLeft+(iCW * 6.5)), Convert.ToSingle(iRow));
+              string sBids = " " + Markets.Coins[sCoin][sMarket].BidAvg.toStr8P(iP) +
+                sBaseM + Markets.Coins[sCoin][sMarket].AskAvg.toStr8P(iP);
+              bg.Graphics.DrawString(Markets.Coins[sCoin][sMarket].UpdateCount.toInt32T().toString(),
+                fCur7, abm, Convert.ToSingle(iLeft - (iCW / 2)), Convert.ToSingle(iRow));
+              bg.Graphics.DrawString(sMarket, fCur7, abm, Convert.ToSingle(iLeft), Convert.ToSingle(iRow));
+              bg.Graphics.DrawString(sPrice, fCur7, sba, Convert.ToSingle(iLeft + (iCW * 1.25)), Convert.ToSingle(iRow));
+              bg.Graphics.DrawString(sBids, fCur7, sbb, Convert.ToSingle(iLeft + (iCW * 6.5)), Convert.ToSingle(iRow));
 
-                        iRow = Convert.ToSingle(iRow + iRowH);
-                        if (iRow > edTradeHist.Top) break;
-                        if (sCoin == LastCur)
-                        {
-                            ThisAvgPriceUSD += Markets.ToUSD((sCoin == sBaseCur ? sMarket.ParseLast("-") : sMarket.ParseFirst("-")), Markets.Coins[sCoin][sMarket].Ask);
-                            ThisAvgCount++;
-                        }
-                    }
-                    if (iRow > edTradeHist.Top) break;
+              iRow = Convert.ToSingle(iRow + iRowH);
+              if (iRow > edTradeHist.Top) break;
+            }
+            if (iRow > edTradeHist.Top) break;
+          }
+
+          #endregion
+
+          #region graph code
+          Pen aG = new Pen(ColorTranslator.FromHtml("#0058B8"), 1);
+          Int32 iMR = 0;  // Market Ranger counts up 
+          Int32 iCurCoin = 0;
+          string[] ByAvgChange = Markets.Coins.ByAvgChange();
+          foreach (string sCoin in ByAvgChange) {
+            iCurCoin += 1;
+            if (iCurCoin > 2) break;
+            string[] KeysByPrice = Markets.Coins[sCoin].KeysByPriceDelta();
+            Color aC = Markets.Coins[sCoin].CoinColor;
+            
+            foreach (string sMarket in KeysByPrice) {
+              iMR++;
+              CAvgDecimalCache aPDC = Markets.Coins[sCoin][sMarket].PriceDeltaCache;
+              CAvgDecimalCache aUCC = Markets.Coins[sCoin][sMarket].UpdateCountCache;
+
+              if (sCoin == sMarket.ParseFirst("-")) {
+                aC = Markets.Coins[sCoin].CoinColor2;
+              }
+              Pen aP = new Pen(aC, 1);
+
+              decimal dChange = 0;
+              decimal dValue = 0;
+              decimal HeightRatio = grHeight / ((PriceChangeMax * 1.05m) - (PriceChangeMin * 1.05m));
+              if (iCurCoin == 1) {  //
+                //chart middle row
+                bg.Graphics.DrawLine(aG, grLeft.toFloat(), (grTop + grHeight / 2).toFloat(), (grLeft + grWidth).toFloat(), (grTop + grHeight / 2).toFloat());
+                //minor PriceChangeMax Min lines with lables.
+                bg.Graphics.DrawLine(aG, grLeft.toFloat(), (grTop + grHeight / 2 + (PriceChangeMax * HeightRatio)).toFloat(), (grLeft + grWidth).toFloat(), (grTop + grHeight / 2 + (PriceChangeMax * HeightRatio)).toFloat());
+                bg.Graphics.DrawString(PriceChangeMax.toStr4(), fCur6, Brushes.LightGray, grLeft.toFloat(), (grTop + grHeight / 2 + (PriceChangeMax * HeightRatio)).toFloat());
+                bg.Graphics.DrawLine(aG, grLeft.toFloat(), (grTop + grHeight / 2 + (PriceChangeMin * HeightRatio)).toFloat(), (grLeft + grWidth).toFloat(), (grTop + grHeight / 2 + (PriceChangeMin * HeightRatio)).toFloat());
+                bg.Graphics.DrawString(PriceChangeMin.toStr4(), fCur6, Brushes.LightGray, grLeft.toFloat(), (grTop + grHeight / 2 + (PriceChangeMin * HeightRatio)).toFloat());
+              
+              }
+
+              Int32 iSpot = 0;
+              List<Point> lp = new List<Point>();
+              Int32 PDCount = aPDC.Keys.Count - 1;
+              decimal dHR2 = grHeightT / 40;
+              foreach (Int64 key in aUCC.Keys.OrderBy(x => x)) {
+                dChange = (decimal)aUCC[key];
+                Int32 x = Convert.ToInt32(grLeft + ((grWidth / 24.25m) * (iSpot + 0.125m)) + (iMR * 2));
+                Int32 y = Convert.ToInt32(grTop - (dChange * dHR2));
+
+                bg.Graphics.DrawLine(aP, x, grTop.toInt32() - 1, x, y - 1);
+                bg.Graphics.DrawLine(aP, x + 1, grTop.toInt32() - 1, x + 1, y - 1);
+
+                iSpot += 1;
+              }
+
+              iSpot = 0;
+              foreach (Int64 key in aPDC.Keys.OrderBy(x => x)) {
+                if (iSpot > 23) break;
+
+                dChange = (decimal)aPDC[key];
+                dValue += dChange;
+
+                Int32 x = Convert.ToInt32(grLeft + ((grWidth / 24.25m) * (iSpot + 0.125m)));
+                Int32 y = Convert.ToInt32((grTop + (grHeight / 2)) + (dValue * HeightRatio));
+                lp.Add(new Point(x, y));
+                bg.Graphics.DrawLine(Pens.WhiteSmoke, x, grTop.toInt32(), x, (grTop + 4).toInt32());
+
+                if ((iSpot > 2) && (iSpot == PDCount - 2)) {
+                  bg.Graphics.DrawString(sMarket, fCur6, Brushes.LightGray, x, y);
                 }
-                ThisAvgPriceUSD /= ThisAvgCount;
-                 Int32 iMR = 0;
-                // draw the graph
-                #region graph code
-                
-                Int32 iCurCoin = 0;
-                Int32 iCoinCount = Markets.Coins.Keys.Count;
-                string[] ByAvgChange = Markets.Coins.ByAvgChange();
-                foreach (string sCoin in ByAvgChange) {
-                  iCurCoin =+ 1;
-                  if (iCurCoin > 3) break;
-                  Int32 iMarketMax = 0;
-                  string[] KeysByPrice = Markets.Coins[sCoin].KeysByPriceDelta();
-                  foreach (string sMarket in KeysByPrice) {
-                    iMR++;
-                    iMarketMax++; if (iMarketMax > 4) break;
-                    CAvgDecimalCache aPDC = Markets.Coins[sCoin][sMarket].PriceDeltaCache;
-                    CAvgDecimalCache aUCC = Markets.Coins[sCoin][sMarket].UpdateCountCache;
-                    Color aC = Markets.Coins[sCoin].CoinColor;
-                    if (sCoin == sMarket.ParseFirst("-")) {
-                      aC = Markets.Coins[sCoin].CoinColor2;
-                    }
-                    Pen aP = new Pen(aC, 1);
-                    Pen aG = new Pen(ColorTranslator.FromHtml("#101010"), 1);
-                    decimal dChange = 0;
-                    decimal dValue = 0;
-
-                    decimal PriceChangeRange = (PriceChangeMax * 1.05m) - (PriceChangeMin * 1.05m);
-                    decimal HeightRatio =  grHeight/ PriceChangeRange;
-                    if (iCurCoin == 1) { 
-                      bg.Graphics.DrawLine(aG, grLeft.toFloat(), (grTop+ grHeight/2).toFloat(), (grLeft+grWidth).toFloat(), (grTop + grHeight / 2).toFloat());
-                      bg.Graphics.DrawLine(aG, grLeft.toFloat(), (grTop + grHeight / 2 + (PriceChangeMax * HeightRatio)).toFloat(), (grLeft + grWidth).toFloat(), (grTop + grHeight / 2 + (PriceChangeMax * HeightRatio)).toFloat());
-                      bg.Graphics.DrawLine(aG, grLeft.toFloat(), (grTop + grHeight / 2 + (PriceChangeMin * HeightRatio)).toFloat(), (grLeft + grWidth).toFloat(), (grTop + grHeight / 2 + (PriceChangeMin * HeightRatio)).toFloat());
-                      bg.Graphics.DrawString(PriceChangeMax.toStr4(), fCur6, Brushes.LightGray, grLeft.toFloat(), (grTop + grHeight / 2 + (PriceChangeMax * HeightRatio)).toFloat());
-                      bg.Graphics.DrawString(PriceChangeMin.toStr4(), fCur6, Brushes.LightGray, grLeft.toFloat(), (grTop + grHeight / 2 + (PriceChangeMin * HeightRatio)).toFloat());
-                    }
-                    Int32 iSpot = 0;
-                    List<Point> lp = new List<Point>();
-                    Int32 PDCount = aPDC.Keys.Count-1;
-                    decimal dHR2 = grHeightT / 40;
-                    foreach(Int64 key in aUCC.Keys.OrderBy(x => x)) {
-                      dChange = (decimal)aUCC[key];
-                      Int32 x = Convert.ToInt32(grLeft + ((grWidth / 24.25m) * (iSpot + 0.125m))+(iMR*2));
-                      Int32 y = Convert.ToInt32(grTop - (dChange * dHR2));
-
-                      bg.Graphics.DrawLine(aP, x, grTop.toInt32()-1, x, y-1);
-                      bg.Graphics.DrawLine(aP, x+1, grTop.toInt32()-1, x+1, y-1);
-
-                      iSpot += 1;
-                    }
-
-                    iSpot = 0;
-                    foreach (Int64 key in aPDC.Keys.OrderBy(x => x)) {
-                      if (iSpot > 23) break;
-
-                      dChange = (decimal)aPDC[key];
-                      dValue += dChange;
-
-                      Int32 x = Convert.ToInt32( grLeft + ((grWidth / 24.25m) * (iSpot+0.125m)));
-                      Int32 y = Convert.ToInt32( (grTop + (grHeight/2)) + ( dValue * HeightRatio ));
-                      lp.Add(new Point(x, y));
-                      bg.Graphics.DrawLine(Pens.WhiteSmoke, x, grTop.toInt32(), x, (grTop+4).toInt32());
-
-                      if ((iSpot>2)&&(iSpot == PDCount-2)) {
-                        bg.Graphics.DrawString(sMarket, fCur6, Brushes.LightGray, x, y);
-                      }
-                      iSpot++;
-                    }
-                    bg.Graphics.DrawLines(aP, lp.ToArray());
+                iSpot++;
+              }
+              bg.Graphics.DrawLines(aP, lp.ToArray());
 
 
 
-                  }
-                }
-                
-                #endregion
-
-                bg.Graphics.DrawString(DateTime.Now.ToStrDateMM() +
-                  //     " T-" + NextGoTime.Value.Subtract(DateTime.Now).TotalSeconds.toInt32().ToString() +
-                  " T-" + NextUpdateAvg.Value.Subtract(DateTime.Now).TotalSeconds.toInt32().ToString() +
-                  " s:" +
-                  TickersLanding.LastTicSeq + " " +
-                  ThisUp + " ", fCur8, Brushes.WhiteSmoke, Convert.ToSingle(fWidth * 0.015), Convert.ToSingle(fHeight * 0.015));
-
-                  if ((LastCur != "") &&(cbTrack.Checked)) {
-                    string standing = "" + LastAmount.toStr8() + " " + LastCur + ( LastCur !="USD"? "  at " + LastPrice.toStr8() :"") +
-                      "  $" + Markets.ToUSD(LastCur, LastAmount).toStr2();
-                    bg.Graphics.DrawString(standing, fCur8, Brushes.WhiteSmoke, Convert.ToSingle(fWidth * 0.015 + cbTrack.Width), Convert.ToSingle(fHeight * 0.06));
-                    if(LastCur != "USD") { 
-                      standing = "               Avg $" + ThisAvgPriceUSD.toStr4() + "  Stop $" + StopPrice.toStr4() + "  Exit $" + ExitMin.toStr4();
-                      bg.Graphics.DrawString(standing, fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft), iRowLastCur);
-                    }
-                  }
-
-                bg.Render(g);
             }
-            catch (Exception e)
-            {
-                e.toAppLog("Refresh " + es);
+          }
+
+          #endregion
+
+          bg.Graphics.DrawString(DateTime.Now.ToStrDateMM() +
+            " " + UpdateNo.toString() +
+            "-" + NextUpdateAvg.Value.Subtract(DateTime.Now).TotalSeconds.toInt32().ToString() +
+            " s:" + TickersLanding.LastTicSeq + " "+ LastMessage , 
+            fCur8, Brushes.WhiteSmoke, Convert.ToSingle(fWidth * 0.015), Convert.ToSingle(fHeight * 0.015));
+
+          if ((iOpMode==10)&&(BuyQuote != "")) {
+            Brush abmm = new SolidBrush(ColorTranslator.FromHtml("#000B17"));
+            bg.Graphics.FillRectangle(abmm, new Rectangle(
+             Convert.ToInt32(iLeft + iCW * 3),
+             Convert.ToInt32(grTop),
+             Convert.ToInt32(iCW * 20),
+             Convert.ToInt32(iRowH * 20)
+           ));
+           bg.Graphics.DrawRectangle(Pens.WhiteSmoke, new Rectangle(
+             Convert.ToInt32(iLeft + iCW * 3),
+             Convert.ToInt32(grTop),
+             Convert.ToInt32(iCW * 20),
+             Convert.ToInt32(iRowH * 20)
+           ));
+
+           bg.Graphics.DrawString( " Buy " + BuyQuote,
+             fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft + iCW*3.5), Convert.ToSingle(grTop + iRowH.toDecimal() * 0.5m));
+
+           bg.Graphics.DrawString(" Quantity " + BuyQuote,
+             fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft + iCW * 10), Convert.ToSingle(grTop + iRowH.toDecimal() * 4));
+
+           bg.Graphics.DrawString(" Price "+BuyBase ,
+             fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft + iCW * 10), Convert.ToSingle(grTop + iRowH.toDecimal() * 8));
+
+           decimal dTotal =  edQuantity.Value * edLastPrice.Value;
+           bg.Graphics.DrawString(" Total         "+ dTotal.toStr8() + BuyBase,
+             fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft + iCW * 10), Convert.ToSingle(grTop + iRowH.toDecimal() * 12));
+
+           
+
+          }
+
+          #region draw positions
+          iCount = 0;
+          iRow = edTradeHist.Top;
+          iWM = (Width - iLeft.toDecimal()- 4) / iCoinCount;
+          foreach (string sCoin in Markets.Coins.Keys.OrderBy(x => x)) {
+            decimal aBal = Positions.Balance(sCoin);
+            if ( aBal > 0.0005m) {
+              Color aC = Markets.Coins[sCoin].CoinColor;
+              Pen aP = new Pen(aC, 1);
+              Brush abmm = new SolidBrush(aC);              
+              bg.Graphics.DrawRectangle(aP,
+                new Rectangle(
+                  Convert.ToInt32(iLeft.toDecimal() + iWM * iCount - (iCW / 2).toDecimal()),
+                  Convert.ToInt32(edTradeHist.Top - grHeightT),
+                  Convert.ToInt32(iWM - 2),
+                  Convert.ToInt32(grHeightT - iRowH.toDecimal()/2)
+                )
+              );
+              Decimal dAvgChange = Markets.Coins[sCoin].AvgChange;
+              Brush sbaa = (System.Math.Abs(dAvgChange) < 0.0005m ? Brushes.WhiteSmoke : ((dAvgChange < 0) ? Brushes.Red : Brushes.Chartreuse));
+              sRow = "    %" + (100 * dAvgChange).toStr4();
+              bg.Graphics.DrawString(sRow, fCur8, sbaa, Convert.ToSingle(iLeft.toDecimal() + iWM * iCount - (3 * iCW / 8).toDecimal()), Convert.ToSingle(iRow - (iRowH * 3.5)));
+              bg.Graphics.DrawString(sCoin, fCur8, abmm, Convert.ToSingle(iLeft.toDecimal() + iWM * iCount - (3 * iCW / 8).toDecimal()), Convert.ToSingle(iRow - (iRowH * 3.5)));
+              bg.Graphics.DrawString(aBal.toStr8() + " " + sCoin, fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft.toDecimal() + iWM * iCount - (3 * iCW / 8).toDecimal()), Convert.ToSingle(iRow - (iRowH * 2.5)));
+              bg.Graphics.DrawString(Positions.AvgPrice(sCoin).toStr8(), fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft.toDecimal() + iWM * iCount - (3 * iCW / 8).toDecimal()), Convert.ToSingle(iRow - (iRowH * 1.5)));
+              
+              iCount += 1;
             }
-            finally
-            {
-                bg.Dispose();
-            }
+          }
+
+
+          #endregion
+
+          bg.Render(g);
+        } catch (Exception e) {
+          e.toAppLog("Refresh " + es);
+        } finally {
+          bg.Dispose();
         }
-        finally
-        {
-            g.Dispose();
-        }
+      } finally {
+        g.Dispose();
+      }
 
     }
 
@@ -588,7 +737,7 @@ namespace OracleAlpha {
     //   DateTime? NextGoTime = null;
     DateTime? NextUpdateAvg = null;
     Boolean FirstTimeLoad = true;
-    // Int32 RedrawToggle = 0;
+    Int64 UpdateNo = 0;
     private async void timer1_Tick(object sender, EventArgs e) {
       timer1.Enabled = false;
 
@@ -618,6 +767,7 @@ namespace OracleAlpha {
       if (NextUpdateAvg.isNull() || (theNow > NextUpdateAvg)) {
         NextUpdateAvg = theNow.AddSeconds(15);
         if (!FirstTimeLoad) {
+          UpdateNo += 1;
           foreach (string sMarket in MarketFilter.Keys) {
             string sBaseCur = sMarket.ParseFirst("-");
             Markets[sMarket].AdvanceAverages();
@@ -633,157 +783,120 @@ namespace OracleAlpha {
 
     }
 
-    private void TradeLastTo(string TargetCur, Boolean UseStops)
-        {
-            string TargetMarket = "";
-            string TargetOp = "";
+    private void TradeLastTo(string TargetCur, Boolean UseStops) {
+      string TargetMarket = "";
+      string TargetOp = "";
 
 
-            if (LastCur == "ADA")
-            {
-                TargetMarket = TargetCur + "-ADA";
-                TargetOp = "Sell";
-                // sell to top bid
-            }
-            else if (LastCur == "ETH")
-            {
-                if (TargetCur == "ADA")
-                {
-                    TargetMarket = "ETH-ADA";
-                    TargetOp = "Buy";
-                }
-                else
-                {
-                    TargetMarket = TargetCur + "-ETH";
-                    TargetOp = "Sell";
-                }
-            }
-            else if (LastCur == "BTC")
-            {
-                if (TargetCur == "USD")
-                {
-                    TargetMarket = "USD-BTC";
-                    TargetOp = "Sell";
-                }
-                else
-                {
-                    TargetMarket = "BTC-" + TargetCur;
-                    TargetOp = "Buy";
-                }
-            }
-            else
-            {
-                TargetMarket = "USD-" + LastCur;
-                TargetOp = LastCur == "USD" ? "Sell": "Buy";
-            }
-
-            string BaseCur = TargetMarket.ParseFirst("-");
-            string QuoteCur = TargetMarket.ParseLast("-");
-
-            if (TargetOp == "Buy")
-            {
-                decimal BaseHolding = LastAmount;
-                decimal TheFee = BaseHolding * TradeFee;
-                LastPrice = Markets[TargetMarket].Bid;
-                decimal LastBasePriceUSD = Markets.ToUSD(BaseCur, 1);
-                decimal USDLastPrice = Markets.ToUSD(BaseCur, LastPrice);
-                if ((BaseCur != "USD") && (LastBasePriceUSD < ExitMin) && (LastBasePriceUSD > StopPrice))
-                {
-                    if (UseStops)
-                    {
-                        string sError = "Except Price " + LastBasePriceUSD.toStr8() + " in " + StopPrice.toStr8() + " " + ExitMin.toStr8();
-                        throw new Exception(sError);
-                    }
-                }
-                decimal QuantityToBuy = (BaseHolding - TheFee) / LastPrice;
-                if (BaseCur != "USD")
-                {
-                    setTradeMsg(BaseCur +
-                      ((LastBasePriceUSD < StopPrice) ? " Stoped at $" : " Sold at $") + LastBasePriceUSD.toStr8() + ((LastBasePriceUSD < StopPrice) ? " Stop was $" + StopPrice.toStr8() : "Exit was $" + ExitMin.toStr8())
-                    );
-                }
-                setTradeMsg(DateTime.Now.ToStrDateMM() +
-                  " Buy " + QuantityToBuy.toStr8() + " " + TargetCur +
-                  " at " + LastPrice.toStr8() + " " + BaseCur + " " + USDLastPrice.toStr8() + "USD" +
-                  " for " + LastAmount.toStr8() + " " + LastCur +
-                  " " + Markets.ToUSD(LastCur, LastAmount).toStr4());
-                LastAmount = QuantityToBuy;
-                StopPrice = USDLastPrice * (1 - (TradeFeeStopM * TradeFee));
-                ExitMin = USDLastPrice * (1 + (TradeFeeExitM * TradeFee));
-                LastPrice = USDLastPrice;
-            }
-            else
-            {
-                decimal tp = Markets.ToUSD(BaseCur, Markets[TargetMarket].Ask);
-                if ((tp < ExitMin) && (tp > StopPrice))
-                {
-                    if (UseStops)
-                    {
-                        string sError = "Except Price " + tp.toStr8() + " in " + StopPrice.toStr8() + " " + ExitMin.toStr8();
-                        throw new Exception(sError);
-                    }
-                }
-                decimal QuoteHolding = LastAmount;
-                LastPrice = Markets[TargetMarket].Ask;  // current asking price in BaseCur
-                decimal USDLastPrice = Markets.ToUSD(BaseCur, LastPrice);  // current ask in usd
-                decimal SellResult = (QuoteHolding * LastPrice); // find sell quote in BaseCur
-                decimal TheFee = (SellResult * TradeFee); // Find Fee in BaseCur
-                SellResult -= TheFee; // subtract fee from Result.
-                setTradeMsg(BaseCur +
-                  ((tp < StopPrice) ? " Stoped $" : " Sold $") + tp.toStr8() + ((tp < StopPrice) ? " Stop was $" + StopPrice.toStr8() : "Exit was $" + ExitMin.toStr8())
-                );
-
-                setTradeMsg(DateTime.Now.ToStrDateMM() +
-                  ((tp < StopPrice) ? " Stop " : " Sell ") + LastAmount.toStr8() + " " + LastCur +
-                  " at " + LastPrice.toStr8() + " " + BaseCur + " $" + USDLastPrice.toStr8() + "USD" +
-                  " for " + SellResult.toStr8() + " " + BaseCur + " $" + Markets.ToUSD(BaseCur, SellResult).toStr4());
-                LastAmount = SellResult;
-                if (BaseCur != "USD")
-                {     // BaseCur can also be sold for usd need to reset exit limits. 
-                    LastPrice = 1 / LastPrice;  // convert the price to be in Quote cur instead of base
-                    StopPrice = Markets.ToUSD(QuoteCur, LastPrice * (1 - (TradeFeeStopM * TradeFee)));
-                    ExitMin = Markets.ToUSD(QuoteCur, LastPrice * (1 + (TradeFeeExitM * TradeFee)));
-                    LastPrice = Markets.ToUSD(QuoteCur, LastPrice);
-                }
-            }
-            LastCur = TargetCur;
-
-
+      if (LastCur == "ADA") {
+        TargetMarket = TargetCur + "-ADA";
+        TargetOp = "Sell";
+        // sell to top bid
+      } else if (LastCur == "ETH") {
+        if (TargetCur == "ADA") {
+          TargetMarket = "ETH-ADA";
+          TargetOp = "Buy";
+        } else {
+          TargetMarket = TargetCur + "-ETH";
+          TargetOp = "Sell";
         }
+      } else if (LastCur == "BTC") {
+        if (TargetCur == "USD") {
+          TargetMarket = "USD-BTC";
+          TargetOp = "Sell";
+        } else {
+          TargetMarket = "BTC-" + TargetCur;
+          TargetOp = "Buy";
+        }
+      } else {
+        TargetMarket = "USD-" + LastCur;
+        TargetOp = LastCur == "USD" ? "Sell" : "Buy";
+      }
 
-    private void cbTrack_CheckedChanged(object sender, EventArgs e)
-    {
-        if (cbTrack.Checked)
-        {
-            LastAmount = edStarting.Value;
-            LastCur = cbStartCur.Text;
+      string BaseCur = TargetMarket.ParseFirst("-");
+      string QuoteCur = TargetMarket.ParseLast("-");
+
+      if (TargetOp == "Buy") {
+        decimal BaseHolding = LastAmount;
+        decimal TheFee = BaseHolding * TradeFee;
+        LastPrice = Markets[TargetMarket].Bid;
+        decimal LastBasePriceUSD = Markets.ToUSD(BaseCur, 1);
+        decimal USDLastPrice = Markets.ToUSD(BaseCur, LastPrice);
+        if ((BaseCur != "USD") && (LastBasePriceUSD < ExitMin) && (LastBasePriceUSD > StopPrice)) {
+          if (UseStops) {
+            string sError = "Except Price " + LastBasePriceUSD.toStr8() + " in " + StopPrice.toStr8() + " " + ExitMin.toStr8();
+            throw new Exception(sError);
+          }
+        }
+        decimal QuantityToBuy = (BaseHolding - TheFee) / LastPrice;
+        if (BaseCur != "USD") {
+          setTradeMsg(BaseCur +
+            ((LastBasePriceUSD < StopPrice) ? " Stoped at $" : " Sold at $") + LastBasePriceUSD.toStr8() + ((LastBasePriceUSD < StopPrice) ? " Stop was $" + StopPrice.toStr8() : "Exit was $" + ExitMin.toStr8())
+          );
+        }
+        setTradeMsg(DateTime.Now.ToStrDateMM() +
+          " Buy " + QuantityToBuy.toStr8() + " " + TargetCur +
+          " at " + LastPrice.toStr8() + " " + BaseCur + " " + USDLastPrice.toStr8() + "USD" +
+          " for " + LastAmount.toStr8() + " " + LastCur +
+          " " + Markets.ToUSD(LastCur, LastAmount).toStr4());
+        LastAmount = QuantityToBuy;
+        StopPrice = USDLastPrice * (1 - (TradeFeeStopM * TradeFee));
+        ExitMin = USDLastPrice * (1 + (TradeFeeExitM * TradeFee));
+        LastPrice = USDLastPrice;
+
+      } else {
+
+        decimal tp = Markets.ToUSD(BaseCur, Markets[TargetMarket].Ask);
+        if ((tp < ExitMin) && (tp > StopPrice)) {
+          if (UseStops) {
+            string sError = "Except Price " + tp.toStr8() + " in " + StopPrice.toStr8() + " " + ExitMin.toStr8();
+            throw new Exception(sError);
+          }
+        }
+        decimal QuoteHolding = LastAmount;
+        LastPrice = Markets[TargetMarket].Ask;  // current asking price in BaseCur
+        decimal USDLastPrice = Markets.ToUSD(BaseCur, LastPrice);  // current ask in usd
+        decimal SellResult = (QuoteHolding * LastPrice); // find sell quote in BaseCur
+        decimal TheFee = (SellResult * TradeFee); // Find Fee in BaseCur
+        SellResult -= TheFee; // subtract fee from Result.
+        setTradeMsg(BaseCur +
+          ((tp < StopPrice) ? " Stoped $" : " Sold $") + tp.toStr8() + ((tp < StopPrice) ? " Stop was $" + StopPrice.toStr8() : "Exit was $" + ExitMin.toStr8())
+        );
+
+        setTradeMsg(DateTime.Now.ToStrDateMM() +
+          ((tp < StopPrice) ? " Stop " : " Sell ") + LastAmount.toStr8() + " " + LastCur +
+          " at " + LastPrice.toStr8() + " " + BaseCur + " $" + USDLastPrice.toStr8() + "USD" +
+          " for " + SellResult.toStr8() + " " + BaseCur + " $" + Markets.ToUSD(BaseCur, SellResult).toStr4());
+        LastAmount = SellResult;
+        if (BaseCur != "USD") {     // BaseCur can also be sold for usd need to reset exit limits. 
+          LastPrice = 1 / LastPrice;  // convert the price to be in Quote cur instead of base
+          StopPrice = Markets.ToUSD(QuoteCur, LastPrice * (1 - (TradeFeeStopM * TradeFee)));
+          ExitMin = Markets.ToUSD(QuoteCur, LastPrice * (1 + (TradeFeeExitM * TradeFee)));
+          LastPrice = Markets.ToUSD(QuoteCur, LastPrice);
+        }
+      }
+      LastCur = TargetCur;
+
+
+    }
+
+    private void cbTrack_CheckedChanged(object sender, EventArgs e) {
+
+        if (cbTrack.Checked) {
+            LastAmount = edQuantity.Value;
             LastPrice = edLastPrice.Value;
             StopPrice = Markets.ToUSD("USD", LastPrice * (1 - (TradeFeeStopM * TradeFee)));
             ExitMin = Markets.ToUSD("USD", LastPrice * (1 + (TradeFeeExitM * TradeFee)));
-            edStarting.Visible = false;
-            cbStartCur.Visible = false;
+            edQuantity.Visible = false;
             edLastPrice.Visible = false;
-        }
-        else
-        {
-            edStarting.Value = LastAmount;
-            cbStartCur.Text = LastCur;
+        } else {
+            edQuantity.Value = LastAmount;
             edLastPrice.Value = LastPrice;
-            edStarting.Visible = true;
-            edStarting.Visible = true;
-            cbStartCur.Visible = true;
+            edQuantity.Visible = true;
             edLastPrice.Visible = true;
         }
     }
 
-    private void edStarting_ValueChanged(object sender, EventArgs e)
-    {
-        if (!LoadingEditors)
-        {
-            LastPrice = Markets.ToUSD(cbStartCur.Text, 1);
-            edLastPrice.Value = LastPrice;
-        }
-    }
 
     private void btnExit_Click(object sender, EventArgs e)
     {
@@ -801,598 +914,18 @@ namespace OracleAlpha {
         }
     }
 
-    private void Form1_ResizeEnd(object sender, EventArgs e)
-    {
-        Graphics g = this.CreateGraphics();
-        try
-        {
-            fWidth = g.VisibleClipBounds.Width;
-            fHeight = g.VisibleClipBounds.Height;
-            f20Height = fHeight * 0.2;
-            f05Height = fHeight * 0.065;
-            f15Height = fHeight * 0.145;
-            f20Width = fWidth * 0.2;
-            f15Width = fWidth * 0.15;
-            f05Width = fWidth * 0.05;
-        }
-        finally
-        {
-            g.Dispose();
-        }
+    private void edQuantity_ValueChanged(object sender, EventArgs e) {
+
     }
+
+   
 
   }
 
-  public class TickerTranformer{
-    public long Id;
-    public CTickerQueue Owner;
-    public BittrexTick TheUpdate;
-    public CMarkets Markets;
-    private BackgroundWorker Worker;
-    public TickerTranformer(CTickerQueue aOwner, long aId, CMarkets aMarkets, BittrexTick aObj) {
-      Owner = aOwner;
-      TheUpdate = aObj;
-      Markets = aMarkets;
+ 
 
-      Worker = new BackgroundWorker();
-      Worker.WorkerSupportsCancellation = false;
-      Worker.DoWork += new DoWorkEventHandler(DoWorkAsync);
-      Worker.RunWorkerCompleted += new RunWorkerCompletedEventHandler(WorkerComplete);
-      Worker.RunWorkerAsync();
-    }
-    private void DoWorkAsync(object sender, DoWorkEventArgs args)  {
-      string sMarket = TheUpdate.Symbol.ParseReverse("-", "-");
-      if (Markets.Contains(sMarket)) {
-        string sBaseCur = sMarket.ParseFirst("-");
-        CMarket m = Markets[sMarket];
-        m.UpdateAsk(TheUpdate.AskRate);
-        m.UpdateBid(TheUpdate.BidRate);
-        m.IncUpdateCount(1);
-        CInvMarket mi = (CInvMarket)Markets.Coins[sBaseCur][sMarket];
-        mi.UpdateAsk(1 / TheUpdate.BidRate);
-        mi.UpdateBid(1 / TheUpdate.AskRate);
-        mi.IncUpdateCount(1);
-      }      
-    }
+ 
 
-    private void WorkerComplete(object sender, RunWorkerCompletedEventArgs args) {
-      try {
-        Worker.Dispose(); // tear down the worker resources.
-        Owner.Remove(Id);
-      } catch (Exception e) {
-          e.toAppLog(Id.toString());
-      }
-    }
-
-  }
-
-  public class CTickerQueue : CQueue {
-    public string LastTicSeq = "";
-    CMarkets Markets;        
-    public CTickerQueue(CMarkets TheMarkets) : base() {
-      Markets = TheMarkets;
-    }
-    public void AddTic(BittrexTick aObj) {
-      Nonce++;
-      base[Nonce] = new TickerTranformer(this, Nonce, Markets, aObj);
-      LastTicSeq = Nonce.toString();
-    }      
-  }
-
-    public class CMarket : CObject {
-      public string MarketName { get { return base["MarketName"].toString(); } set { base["MarketName"] = value; } }
-      public string QuoteCur { get { return base["MarketName"].toString().ParseLast("-"); } }
-      public string BaseCur { get { return base["MarketName"].toString().ParseFirst("-"); } }
-
-      public void AdvanceAverages()
-      {
-          Ask = Ask;
-          Bid = Bid;
-          UpdateCount = 0;
-      }
-      public decimal Ask
-      {
-          get
-          {
-              return ((CAvgDecimalCache)base["Ask"]).toDecimal();
-          }
-          set
-          {
-              CAvgDecimalCache aAsk = ((CAvgDecimalCache)base["Ask"]);
-              aAsk.Add(value);
-              this.AskAvg = aAsk.toAvg();
-              this.AskDelta = (this.AskAvg == 0 ? 0 : ((Ask / AskAvg > 1) ? Ask / AskAvg - 1 : (1 - (Ask / AskAvg)) * -1));
-          }
-      }
-
-      public void UpdateAsk(decimal NewAsk)
-      {
-          CAvgDecimalCache aAsk = ((CAvgDecimalCache)base["Ask"]);
-          CAvgDecimalCache aAskAvg = ((CAvgDecimalCache)base["AskAvg"]);
-          CAvgDecimalCache aBidDelta = ((CAvgDecimalCache)base["BidDelta"]);
-          CAvgDecimalCache aAskDelta = ((CAvgDecimalCache)base["AskDelta"]);
-          CAvgDecimalCache aAvgPrice = ((CAvgDecimalCache)base["AvgPrice"]);
-          CAvgDecimalCache aPriceDelta = ((CAvgDecimalCache)base["PriceDelta"]);
-          aAsk[aAsk.Nonce] = NewAsk;
-          decimal aAskG = aAsk.toAvg();
-          aAskAvg[aAskAvg.Nonce] = aAskG;
-          aAskDelta[aAskDelta.Nonce] = (aAskG == 0 ? 0 : ((NewAsk / aAskG > 1) ? NewAsk / aAskG - 1 : (1 - (NewAsk / aAskG)) * -1));
-          //  aPriceDelta[aPriceDelta.Nonce] = (aAskDelta[aAskDelta.Nonce] + aBidDelta[aBidDelta.Nonce]) / 2;
-          aAvgPrice[aAvgPrice.Nonce] = (this.Bid + this.Ask) / 2;
-      }
-
-      public decimal AskAvg
-      {
-          get
-          {
-              return ((CAvgDecimalCache)base["AskAvg"]).toDecimal();
-          }
-          set
-          {
-              CAvgDecimalCache aAskAvg = ((CAvgDecimalCache)base["AskAvg"]);
-              aAskAvg.Add(value);
-          }
-      }
-
-      public decimal AskDelta
-      {
-          get
-          {
-              return ((CAvgDecimalCache)base["AskDelta"]).toDecimal();
-          }
-          set
-          {
-              CAvgDecimalCache aAskDelta = ((CAvgDecimalCache)base["AskDelta"]);
-              aAskDelta.Add(value);
-          }
-      }
-
-      public decimal Bid
-      {
-          get
-          {
-              return ((CAvgDecimalCache)base["Bid"]).toDecimal();
-          }
-          set
-          {
-              CAvgDecimalCache aBid = ((CAvgDecimalCache)base["Bid"]);
-              aBid.Add(value);
-              this.BidAvg = aBid.toAvg();
-              this.BidDelta = (this.BidAvg == 0 ? 0 : ((Bid / BidAvg > 1) ? Bid / BidAvg - 1 : (1 - (Bid / BidAvg)) * -1));
-              this.PriceDelta = (AskDelta + BidDelta) / 2;
-              this.AvgPrice = (this.Bid + this.Ask) / 2;
-          }
-      }
-
-      public void UpdateBid(decimal NewBid)
-      {
-          CAvgDecimalCache aBid = ((CAvgDecimalCache)base["Bid"]);
-          CAvgDecimalCache aBidAvg = ((CAvgDecimalCache)base["BidAvg"]);
-          CAvgDecimalCache aBidDelta = ((CAvgDecimalCache)base["BidDelta"]);
-          CAvgDecimalCache aAskDelta = ((CAvgDecimalCache)base["AskDelta"]);
-          CAvgDecimalCache aPriceDelta = ((CAvgDecimalCache)base["PriceDelta"]);
-          CAvgDecimalCache aAvgPrice = ((CAvgDecimalCache)base["AvgPrice"]);
-          aBid[aBid.Nonce] = NewBid;
-          decimal aBidA = aBid.toAvg();
-          aBidAvg[aBidAvg.Nonce] = aBidA;
-          aBidDelta[aBidDelta.Nonce] = (aBidA == 0 ? 0 : ((NewBid / aBidA > 1) ? NewBid / aBidA - 1 : (1 - (NewBid / aBidA)) * -1));
-          aPriceDelta[aPriceDelta.Nonce] = (aAskDelta[aAskDelta.Nonce] + aBidDelta[aBidDelta.Nonce]) / 2;
-          aAvgPrice[aAvgPrice.Nonce] = (this.Bid + this.Ask) / 2;
-      }
-
-      public decimal BidAvg
-      {
-          get
-          {
-              return ((CAvgDecimalCache)base["BidAvg"]).toDecimal();
-          }
-          set
-          {
-              ((CAvgDecimalCache)base["BidAvg"]).Add(value);
-          }
-      }
-
-      public decimal BidDelta
-      {
-          get
-          {
-              return ((CAvgDecimalCache)base["BidDelta"]).toDecimal();
-          }
-          set
-          {
-              ((CAvgDecimalCache)base["BidDelta"]).Add(value);
-          }
-      }
-
-      public decimal AvgPrice
-      {
-          get
-          {
-              return ((CAvgDecimalCache)base["AvgPrice"]).toDecimal();
-          }
-          set
-          {
-              ((CAvgDecimalCache)base["AvgPrice"]).Add(value);
-          }
-      }
-
-      public decimal PriceDelta
-      {
-          get
-          {
-              return ((CAvgDecimalCache)base["PriceDelta"]).toDecimal();
-          }
-          set
-          {
-              ((CAvgDecimalCache)base["PriceDelta"]).Add(value);
-          }
-      }
-
-      public CAvgDecimalCache PriceDeltaCache
-      {
-          get
-          {
-              return ((CAvgDecimalCache)base["PriceDelta"]);
-          }
-      }
-
-
-      public decimal Last
-      {
-          get
-          {
-              return ((CAvgDecimalCache)base["Last"]).toDecimal();
-          }
-          set
-          {
-              ((CAvgDecimalCache)base["Last"]).Add(value);
-              CAvgDecimalCache aLast = ((CAvgDecimalCache)base["Last"]);
-              aLast.Add(value);
-              if (aLast.Count > 1)
-              {
-                  this.LastAvg = aLast.toAvg();
-              }
-          }
-      }
-
-      public decimal LastAvg {
-        get { return ((CAvgDecimalCache)base["LastAvg"]).toDecimal(); } 
-        set { ((CAvgDecimalCache)base["LastAvg"]).Add(value); }
-      }
-      public decimal UpdateCount {
-          get
-          {
-              return ((CAvgDecimalCache)base["UpdateCount"]).toDecimal();
-          }
-          set
-          {
-              ((CAvgDecimalCache)base["UpdateCount"]).Add(value);
-          }
-      }
-
-      public CAvgDecimalCache UpdateCountCache {
-          get
-          {
-              return ((CAvgDecimalCache)base["UpdateCount"]);
-          }
-      }
-
-      public void IncUpdateCount(Int32 HowMany) {
-          CAvgDecimalCache aUC = ((CAvgDecimalCache)base["UpdateCount"]);
-          aUC[aUC.Nonce] = aUC[aUC.Nonce] + HowMany;
-      }
-
-      public CMarket(string sMarket) {
-        MarketName = sMarket;
-        int aSize = 24;
-        CAvgDecimalCache adc = new CAvgDecimalCache { Size = 24 };
-        base["Ask"] = adc;
-
-        adc = new CAvgDecimalCache { Size = aSize };
-        base["AskAvg"] = adc;
-
-        adc = new CAvgDecimalCache { Size = aSize };
-        base["AskDelta"] = adc;
-
-        adc = new CAvgDecimalCache { Size = aSize };
-        base["Bid"] = adc;
-
-        adc = new CAvgDecimalCache { Size = aSize };
-        base["BidAvg"] = adc;
-
-        adc = new CAvgDecimalCache { Size = aSize };
-        base["BidDelta"] = adc;
-
-        adc = new CAvgDecimalCache { Size = aSize };
-        base["Last"] = adc;
-
-        adc = new CAvgDecimalCache { Size = aSize };
-        base["LastAvg"] = adc;
-
-        adc = new CAvgDecimalCache { Size = aSize };
-        base["AvgPrice"] = adc;
-
-        adc = new CAvgDecimalCache { Size = aSize };
-        base["PriceDelta"] = adc;
-
-        adc = new CAvgDecimalCache { Size = aSize };
-        base["UpdateCount"] = adc;
-
-      }
-    }
-
-    public class CInvMarket : CMarket
-    {
-        public CInvMarket(string aMarket) : base(aMarket)
-        {
-        }
-        new public decimal Ask
-        {
-            get
-            {
-                return ((CAvgDecimalCache)base["Ask"]).toDecimal();
-            }
-            set
-            {
-                CAvgDecimalCache aAsk = ((CAvgDecimalCache)base["Ask"]);
-                aAsk.Add(1 / value);
-                this.AskAvg = aAsk.toAvg();
-                this.AskDelta = ((Ask / AskAvg > 1) ? Ask / AskAvg - 1 : (1 - (Ask / AskAvg)) * -1);
-            }
-        }
-        new public decimal Bid
-        {
-            get
-            {
-                return ((CAvgDecimalCache)base["Bid"]).toDecimal();
-            }
-            set
-            {
-                CAvgDecimalCache aBid = ((CAvgDecimalCache)base["Bid"]);
-                aBid.Add(1 / value);
-                this.BidAvg = aBid.toAvg();
-                this.BidDelta = ((Bid / BidAvg > 1) ? Bid / BidAvg - 1 : (1 - (Bid / BidAvg)) * -1);
-                this.PriceDelta = (AskDelta + BidDelta) / 2;
-            }
-        }
-
-        new public decimal Last
-        {
-            get
-            {
-                return ((CAvgDecimalCache)base["Last"]).toDecimal();
-            }
-            set
-            {
-                CAvgDecimalCache aLast = ((CAvgDecimalCache)base["Last"]);
-                aLast.Add(1 / value);
-                if (aLast.Count > 1)
-                {
-                    this.LastAvg = aLast.toAvg();
-                }
-            }
-        }
-    }
-
-    public class CMarketList : CObject {
-      public string Coin;
-      public Int32 ColorIndex = 0;
-      public string[] SomeColors = {
-        "#E5D82D","#DFCB3C","#D9BE4B","#D3B15A","#CDA469", "#C79778","#C18A87","#BB7D96","#B570A5","#AF63B4",
-        "#A956C3","#A349D2","#9D3CE1","#972FF0","#9727F0", "#9D2CE1","#A331D2","#A936C3","#AF3BB4","#B540A5",
-        "#BB4596","#C14A87","#C74F78","#CD5469","#D3595A", "#D95E4B","#DF633C","#E5682D","#EB6D1E","#F1720F",
-        "#F1720F","#FF8000","#804000","#81320F","#82311E", "#83302D","#842F3C","#852E4B","#862D5A","#872C69",
-        "#882B78","#892A87","#8A2996","#8B28A5","#8C27B4", "#8D26C3","#8E25D2","#8F24E1","#9023F0","#6666FF",
-        "#7162FF","#735EFF","#755AFF","#7756FF","#7952FF", "#7B4EFF","#7D4AFF","#7F46FF","#8142FF","#833EFF",
-        "#853AFF"};
-      public Color GetCoinColor(string aCoin) {
-        Color a = ColorTranslator.FromHtml("#42E2B8");
-        switch (aCoin) {
-          case "ADA": a = ColorTranslator.FromHtml("#2291FF"); break;
-          case "USD": a = ColorTranslator.FromHtml("#42E2B8"); break;
-          case "USDT": a = ColorTranslator.FromHtml("#2C9790"); break;
-          case "BTC": a = ColorTranslator.FromHtml("#F28123"); break;
-          case "ETH": a = ColorTranslator.FromHtml("#FF74D4"); break;
-          default:
-              Int32 h = Encoding.ASCII.GetBytes(aCoin).toSum();
-              a = ColorTranslator.FromHtml(SomeColors[h % 61]); break;
-        }
-        return a;
-      }
-      public Color CoinColor { get { return GetCoinColor(Coin); } }
-      public Color CoinColor2 {
-        get {
-            Color b = ColorTranslator.FromHtml("#000040");
-            Color[] C = DllExt.GetColors(CoinColor, b, 2);  // darken it by 3rd.       
-            return C[1];
-        }
-      }
-      public Color MarketColor(string aMarket) {
-        return Color.Wheat;
-      }
-      public Decimal AvgChange {
-        get {
-          Decimal r = 0;
-          foreach (string sMarket in base.Keys) {
-            r += ((CMarket)base[sMarket]).PriceDelta;
-          }
-          return ((base.Keys.Count > 0) ? r / base.Keys.Count : 0);
-        }
-      }
-      public Decimal UpdateCount {
-        get {
-          Decimal r = 0;
-          foreach (string sMarket in base.Keys) {
-            r += ((CMarket)base[sMarket]).UpdateCount;
-          }
-          return r;
-        }
-      }
-      public CMarketList(string aCoin) : base() {
-        Coin = aCoin;
-        Int32 h = Encoding.ASCII.GetBytes(Coin).toSum();
-        ColorIndex = (h % 61);
-      }
-      public new CMarket this[string aMarket] {
-        get { try { return (base[aMarket] is object ? (CMarket)base[aMarket] : null); } catch { return null; } }
-        set { base[aMarket] = value; }
-      }
-      public string[] KeysByPriceDelta() {
-        return base.Keys.OrderByDescending(x => ((CMarket)base[x]).PriceDelta).ToArray();
-      }
-  }
-
-  public class CMarketCoins : CObject
-  {
-      public CMarketCoins() : base() { }
-      public new CMarketList this[string aCoin]
-      {
-          get { try { return (base[aCoin] is object ? (CMarketList)base[aCoin] : null); } catch { return null; } }
-          set { base[aCoin] = value; }
-      }
-      public string[] ByAvgChange()
-      {
-          return base.Keys.OrderByDescending(x => ((CMarketList)base[x]).AvgChange).ToArray();
-      }
-      public string CurUpCoin
-      {
-          get
-          {
-              return ByAvgChange()[0];
-          }
-      }
-  }
-
-  public class CMarkets : CObject
-  {
-      public CObject MarketFilter;
-      public CMarketCoins Coins;
-      public CMarkets(CObject aMarketFilter) : base()
-      {
-          MarketFilter = aMarketFilter;
-          Coins = new CMarketCoins();
-
-          foreach (string sMarket in MarketFilter.Keys)
-          {
-              CMarket aM = new CMarket(sMarket);
-              base[sMarket] = aM;
-              if (!(Coins[aM.QuoteCur] is CMarketList)) Coins[aM.QuoteCur] = new CMarketList(aM.QuoteCur);
-              Coins[aM.QuoteCur][sMarket] = aM;
-              if (!(Coins[aM.BaseCur] is CMarketList)) Coins[aM.BaseCur] = new CMarketList(aM.BaseCur);
-              Coins[aM.BaseCur][sMarket] = new CInvMarket(sMarket);
-          }
-      }
-      public new CMarket this[string aKey]
-      {
-          get { return (CMarket)base[aKey]; }
-          set { base[aKey] = value; }
-      }
-
-
-      public Decimal BTCtoUSD(Decimal aBTCValue)
-      {
-          return (this["USD-BTC"].Bid + (this["USD-BTC"].Ask - this["USD-BTC"].Bid) / 2) * aBTCValue;
-      }
-      public Decimal ETHtoUSD(Decimal aETHValue)
-      {
-          return (this["USD-ETH"].Bid + (this["USD-ETH"].Ask - this["USD-ETH"].Bid) / 2) * aETHValue;
-      }
-      public Decimal ADAtoUSD(Decimal aADAValue)
-      {
-          return (this["USD-ADA"].Bid + (this["USD-ADA"].Ask - this["USD-ADA"].Bid) / 2) * aADAValue;
-      }
-
-      public Decimal ToUSD(string aCur, Decimal aCurValue)
-      {
-          Decimal aRet = 0;
-          switch (aCur)
-          {
-              case "USD":
-                  aRet = aCurValue;
-                  break;
-              case "BTC":
-                  aRet = BTCtoUSD(aCurValue);
-                  break;
-              case "ETH":
-                  aRet = ETHtoUSD(aCurValue);
-                  break;
-              default:
-                  string sMarkAttempt = "USD-" + aCur;
-                  if (this[sMarkAttempt] is CMarket)
-                  {
-                      aRet = (this[sMarkAttempt].Bid + (this[sMarkAttempt].Ask - this[sMarkAttempt].Bid) / 2) * aCurValue;
-                  }
-                  else
-                  {
-                      sMarkAttempt = "BTC-" + aCur;
-                      if (this[sMarkAttempt] is CMarket)
-                      {
-                          aRet = BTCtoUSD((this[sMarkAttempt].Bid + (this[sMarkAttempt].Ask - this[sMarkAttempt].Bid) / 2) * aCurValue);
-                      }
-                      else
-                      {
-                          sMarkAttempt = "ETH-" + aCur;
-                          if (this[sMarkAttempt] is CMarket)
-                          {
-                              aRet = ETHtoUSD((this[sMarkAttempt].Bid + (this[sMarkAttempt].Ask - this[sMarkAttempt].Bid) / 2) * aCurValue);
-                          }
-                          else throw new Exception("Unknown Currency " + aCur);
-                      }
-                  }
-                  break;
-          }
-          return aRet;
-      }
-
-  }
-
-    //b.Currency, b.Balance, b.Available
-    public class CBalances : CObject
-    {
-
-        public class CBalance : CObject
-        {
-            public CBalances Owner;
-            public string Currency { get { return base["Currency"].toString(); } set { base["Currency"] = value; } }
-            public decimal Available { get { return base["Available"].toDecimal(); } set { base["Available"] = value; } }
-            public decimal Balance { get { return base["Balance"].toDecimal(); } set { base["Balance"] = value; } }
-            public CBalance(CBalances aOwner, string aCurrency, decimal aBalance, decimal aAvailable) : base()
-            {
-                Owner = aOwner;
-                Currency = aCurrency;
-                Available = aAvailable;
-                Balance = aBalance;
-            }
-        }
-
-        public CMarkets Markets;
-        public CBalances(CMarkets aMarkets) : base()
-        {
-            Markets = aMarkets;
-        }
-        public new CBalance this[string aCur] { get {
-          try {  
-            return (CBalance)base[aCur];
-          } catch {
-            base[aCur] = new CBalances.CBalance(this, aCur, 0, 0);
-            return (CBalance)base[aCur];
-          }
-        } set { base[aCur] = value; } }
-        public void AddUpdate(string sCurrency, decimal aBalance, decimal aAvail)
-        {
-            if (!Contains(sCurrency))
-            {
-                this[sCurrency] = new CBalances.CBalance(this, sCurrency, aBalance, aAvail);
-            }
-            else
-            {
-                CBalances.CBalance wb = (CBalances.CBalance)this[sCurrency];
-                wb.Available = aAvail;
-                wb.Balance = aBalance;
-            }
-        }
-
-    }
 
 
 

@@ -39,24 +39,23 @@ namespace OracleAlpha
       this.textBox2 = new System.Windows.Forms.TextBox();
       this.textBox1 = new System.Windows.Forms.TextBox();
       this.timer1 = new System.Windows.Forms.Timer(this.components);
-      this.edStarting = new System.Windows.Forms.NumericUpDown();
+      this.edQuantity = new System.Windows.Forms.NumericUpDown();
       this.cbTrack = new System.Windows.Forms.CheckBox();
-      this.cbStartCur = new System.Windows.Forms.ComboBox();
       this.edTradeHist = new System.Windows.Forms.TextBox();
       this.edLastPrice = new System.Windows.Forms.NumericUpDown();
       this.btnExit = new System.Windows.Forms.Button();
-      ((System.ComponentModel.ISupportInitialize)(this.edStarting)).BeginInit();
+      ((System.ComponentModel.ISupportInitialize)(this.edQuantity)).BeginInit();
       ((System.ComponentModel.ISupportInitialize)(this.edLastPrice)).BeginInit();
       this.SuspendLayout();
       // 
       // edOut
       // 
       this.edOut.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-      this.edOut.Location = new System.Drawing.Point(405, 210);
+      this.edOut.Location = new System.Drawing.Point(405, 109);
       this.edOut.Margin = new System.Windows.Forms.Padding(2);
       this.edOut.Multiline = true;
       this.edOut.Name = "edOut";
-      this.edOut.Size = new System.Drawing.Size(205, 79);
+      this.edOut.Size = new System.Drawing.Size(205, 180);
       this.edOut.TabIndex = 36;
       // 
       // label3
@@ -133,35 +132,35 @@ namespace OracleAlpha
       this.timer1.Interval = 250;
       this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
       // 
-      // edStarting
+      // edQuantity
       // 
-      this.edStarting.BackColor = System.Drawing.Color.Black;
-      this.edStarting.BorderStyle = System.Windows.Forms.BorderStyle.None;
-      this.edStarting.DecimalPlaces = 8;
-      this.edStarting.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-      this.edStarting.ForeColor = System.Drawing.Color.FloralWhite;
-      this.edStarting.ImeMode = System.Windows.Forms.ImeMode.Off;
-      this.edStarting.Increment = new decimal(new int[] {
+      this.edQuantity.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(33)))), ((int)(((byte)(69)))));
+      this.edQuantity.BorderStyle = System.Windows.Forms.BorderStyle.None;
+      this.edQuantity.DecimalPlaces = 8;
+      this.edQuantity.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+      this.edQuantity.ForeColor = System.Drawing.Color.FloralWhite;
+      this.edQuantity.ImeMode = System.Windows.Forms.ImeMode.Off;
+      this.edQuantity.Increment = new decimal(new int[] {
             5,
             0,
             0,
             0});
-      this.edStarting.Location = new System.Drawing.Point(140, 108);
-      this.edStarting.Maximum = new decimal(new int[] {
+      this.edQuantity.Location = new System.Drawing.Point(201, 212);
+      this.edQuantity.Maximum = new decimal(new int[] {
             999999,
             0,
             0,
             0});
-      this.edStarting.Name = "edStarting";
-      this.edStarting.Size = new System.Drawing.Size(129, 19);
-      this.edStarting.TabIndex = 37;
-      this.edStarting.Value = new decimal(new int[] {
+      this.edQuantity.Name = "edQuantity";
+      this.edQuantity.Size = new System.Drawing.Size(129, 19);
+      this.edQuantity.TabIndex = 37;
+      this.edQuantity.Value = new decimal(new int[] {
             50,
             0,
             0,
             0});
-      this.edStarting.Visible = false;
-      this.edStarting.ValueChanged += new System.EventHandler(this.edStarting_ValueChanged);
+      this.edQuantity.Visible = false;
+      this.edQuantity.ValueChanged += new System.EventHandler(this.edQuantity_ValueChanged);
       // 
       // cbTrack
       // 
@@ -169,7 +168,7 @@ namespace OracleAlpha
       this.cbTrack.BackColor = System.Drawing.Color.Black;
       this.cbTrack.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
       this.cbTrack.ForeColor = System.Drawing.Color.White;
-      this.cbTrack.Location = new System.Drawing.Point(24, 106);
+      this.cbTrack.Location = new System.Drawing.Point(11, 109);
       this.cbTrack.Margin = new System.Windows.Forms.Padding(2);
       this.cbTrack.Name = "cbTrack";
       this.cbTrack.Size = new System.Drawing.Size(119, 21);
@@ -177,23 +176,6 @@ namespace OracleAlpha
       this.cbTrack.Text = "Track Amount:";
       this.cbTrack.UseVisualStyleBackColor = false;
       this.cbTrack.CheckedChanged += new System.EventHandler(this.cbTrack_CheckedChanged);
-      // 
-      // cbStartCur
-      // 
-      this.cbStartCur.BackColor = System.Drawing.Color.Black;
-      this.cbStartCur.ForeColor = System.Drawing.Color.White;
-      this.cbStartCur.FormattingEnabled = true;
-      this.cbStartCur.Items.AddRange(new object[] {
-            "ADA",
-            "ETH",
-            "BTC",
-            "USD"});
-      this.cbStartCur.Location = new System.Drawing.Point(274, 108);
-      this.cbStartCur.Margin = new System.Windows.Forms.Padding(2);
-      this.cbStartCur.Name = "cbStartCur";
-      this.cbStartCur.Size = new System.Drawing.Size(51, 21);
-      this.cbStartCur.TabIndex = 39;
-      this.cbStartCur.Text = "ADA";
       // 
       // edTradeHist
       // 
@@ -207,7 +189,7 @@ namespace OracleAlpha
       // 
       // edLastPrice
       // 
-      this.edLastPrice.BackColor = System.Drawing.Color.Black;
+      this.edLastPrice.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(33)))), ((int)(((byte)(69)))));
       this.edLastPrice.BorderStyle = System.Windows.Forms.BorderStyle.None;
       this.edLastPrice.DecimalPlaces = 8;
       this.edLastPrice.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
@@ -218,7 +200,7 @@ namespace OracleAlpha
             0,
             0,
             524288});
-      this.edLastPrice.Location = new System.Drawing.Point(328, 109);
+      this.edLastPrice.Location = new System.Drawing.Point(201, 178);
       this.edLastPrice.Maximum = new decimal(new int[] {
             999999,
             0,
@@ -240,7 +222,7 @@ namespace OracleAlpha
       this.btnExit.DialogResult = System.Windows.Forms.DialogResult.OK;
       this.btnExit.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
       this.btnExit.ForeColor = System.Drawing.SystemColors.ButtonFace;
-      this.btnExit.Location = new System.Drawing.Point(463, 109);
+      this.btnExit.Location = new System.Drawing.Point(282, 141);
       this.btnExit.Name = "btnExit";
       this.btnExit.Size = new System.Drawing.Size(83, 22);
       this.btnExit.TabIndex = 42;
@@ -256,9 +238,8 @@ namespace OracleAlpha
       this.Controls.Add(this.btnExit);
       this.Controls.Add(this.edLastPrice);
       this.Controls.Add(this.edTradeHist);
-      this.Controls.Add(this.cbStartCur);
       this.Controls.Add(this.cbTrack);
-      this.Controls.Add(this.edStarting);
+      this.Controls.Add(this.edQuantity);
       this.Controls.Add(this.label3);
       this.Controls.Add(this.label2);
       this.Controls.Add(this.label1);
@@ -274,7 +255,8 @@ namespace OracleAlpha
       this.Load += new System.EventHandler(this.Form1_Load);
       this.Shown += new System.EventHandler(this.Form1_Shown);
       this.ResizeEnd += new System.EventHandler(this.Form1_ResizeEnd);
-      ((System.ComponentModel.ISupportInitialize)(this.edStarting)).EndInit();
+      this.MouseDown += new System.Windows.Forms.MouseEventHandler(this.Form1_MouseDown);
+      ((System.ComponentModel.ISupportInitialize)(this.edQuantity)).EndInit();
       ((System.ComponentModel.ISupportInitialize)(this.edLastPrice)).EndInit();
       this.ResumeLayout(false);
       this.PerformLayout();
@@ -292,9 +274,8 @@ namespace OracleAlpha
     private System.Windows.Forms.TextBox textBox2;
     private System.Windows.Forms.TextBox textBox1;
     private System.Windows.Forms.Timer timer1;
-    private System.Windows.Forms.NumericUpDown edStarting;
+    private System.Windows.Forms.NumericUpDown edQuantity;
     private System.Windows.Forms.CheckBox cbTrack;
-    private System.Windows.Forms.ComboBox cbStartCur;
     private System.Windows.Forms.TextBox edTradeHist;
     private System.Windows.Forms.NumericUpDown edLastPrice;
     private System.Windows.Forms.Button btnExit;
