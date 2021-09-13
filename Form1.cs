@@ -222,11 +222,15 @@ namespace OracleAlpha {
             cbTrack.Left = (fWidth * 0.015).toInt32();
             cbTrack.Top = (fHeight * 0.055).toInt32();
             decimal iLeft = (fWidth.toDecimal() * 0.015m) + (iCW.toDecimal() / 2);
-            edQuantity.Top = (grTop + iRowH.toDecimal() * 4).toInt32T();
-            edLastPrice.Top = (grTop + iRowH.toDecimal() * 8).toInt32T();
 
+            edQuantity.Top = (grTop + iRowH.toDecimal() * 4).toInt32T();
             edQuantity.Left = (iLeft + iCW.toDecimal() * 13).toInt32T();
-            edLastPrice.Left = edQuantity.Left;            
+
+            edLastPrice.Top = (grTop + iRowH.toDecimal() * 7).toInt32T();
+            edLastPrice.Left = edQuantity.Left;
+
+            btnBuy.Top = (grTop + iRowH.toDecimal() * 14).toInt32T();
+            btnBuy.Left = edQuantity.Left;
                         
             btnExit.Left = edLastPrice.Left + edLastPrice.Width + 2;
             btnExit.Top = cbTrack.Top;
@@ -247,9 +251,11 @@ namespace OracleAlpha {
             if ((iOpMode == 10) && (BuyQuote != "") && (BuyBase != "")) {
               if(!edQuantity.Visible) edQuantity.Visible = true;
               if(!edLastPrice.Visible) edLastPrice.Visible = true;
+              if(!btnBuy.Visible) btnBuy.Visible = true;
             } else if (iOpMode == 0) {
               if (edQuantity.Visible) edQuantity.Visible = false;
               if (edLastPrice.Visible) edLastPrice.Visible = false;
+              if (btnBuy.Visible) btnBuy.Visible = false;
             }
 
           }
@@ -268,6 +274,7 @@ namespace OracleAlpha {
             if (cbTrack.Visible) cbTrack.Visible = false;            
             if (edLastPrice.Visible) edLastPrice.Visible = false;
             if (btnExit.Visible) btnExit.Visible = false;
+            if (btnBuy.Visible) btnBuy.Visible = false;
           }
 
           if (iDisplayMode == 20) {
@@ -284,6 +291,7 @@ namespace OracleAlpha {
             if (cbTrack.Visible) cbTrack.Visible = false;           
             if (edLastPrice.Visible) edLastPrice.Visible = false;
             if (btnExit.Visible) btnExit.Visible = false;
+            if (btnBuy.Visible) btnBuy.Visible = false;
           }
 
 
@@ -310,6 +318,7 @@ namespace OracleAlpha {
                 BuyBase = Positions.BiggestBaseCoin();
                 string sQuoteMarket = BuyBase+'-'+BuyQuote;
                 CMarket cm = Markets.Coins[sCoin][sQuoteMarket];
+                if (!cm.isNull()&&(cm.Ask.toDecimal() != 0))
                 edLastPrice.Value = cm.Ask.toDecimal();
                 edQuantity.Value = Positions.Balance(BuyBase) / cm.Ask.toDecimal();
               }
@@ -597,20 +606,28 @@ namespace OracleAlpha {
              Convert.ToInt32(iRowH * 20)
            ));
 
-           bg.Graphics.DrawString( " Buy " + BuyQuote,
+           bg.Graphics.DrawString( " Buy " + BuyQuote+" with "+BuyBase,
              fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft + iCW*3.5), Convert.ToSingle(grTop + iRowH.toDecimal() * 0.5m));
 
            bg.Graphics.DrawString(" Quantity " + BuyQuote,
              fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft + iCW * 10), Convert.ToSingle(grTop + iRowH.toDecimal() * 4));
 
            bg.Graphics.DrawString(" Price "+BuyBase ,
-             fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft + iCW * 10), Convert.ToSingle(grTop + iRowH.toDecimal() * 8));
+             fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft + iCW * 10), Convert.ToSingle(grTop + iRowH.toDecimal() * 7));
 
            decimal dTotal =  edQuantity.Value * edLastPrice.Value;
-           bg.Graphics.DrawString(" Total         "+ dTotal.toStr8() + BuyBase,
-             fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft + iCW * 10), Convert.ToSingle(grTop + iRowH.toDecimal() * 12));
+           bg.Graphics.DrawString(" Total  "+ dTotal.toStr8() + BuyBase,
+             fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft + iCW * 10), Convert.ToSingle(grTop + iRowH.toDecimal() * 9));
 
-           
+          decimal dTradeFee = dTotal * TradeFee;  
+           bg.Graphics.DrawString(" Fee "+ (TradeFee*100).toStr4()+"%  " + dTradeFee.toStr8() + BuyBase,
+             fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft + iCW * 10), Convert.ToSingle(grTop + iRowH.toDecimal() * 10));
+
+           bg.Graphics.DrawString(" Est (Total - fee): " + (dTotal - dTradeFee).toStr8() + BuyBase,
+              fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft + iCW * 10), Convert.ToSingle(grTop + iRowH.toDecimal() * 11));
+
+
+
 
           }
 
@@ -914,8 +931,20 @@ namespace OracleAlpha {
         }
     }
 
-    private void edQuantity_ValueChanged(object sender, EventArgs e) {
+    private void btnBuy_Click(object sender, EventArgs e) {
 
+
+    }
+
+
+    private void edLastPrice_ValueChanged(object sender, EventArgs e) {
+      decimal dBB = Positions.Balance(BuyBase);
+      edQuantity.Value = dBB / edLastPrice.Value;
+    }
+
+    private void edQuantity_ValueChanged(object sender, EventArgs e) {
+   //   decimal dBB = Positions.Balance(BuyBase);      
+   //   edLastPrice.Value = dBB / edQuantity.Value;
     }
 
    

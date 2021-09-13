@@ -44,6 +44,7 @@ namespace OracleAlpha
       this.edTradeHist = new System.Windows.Forms.TextBox();
       this.edLastPrice = new System.Windows.Forms.NumericUpDown();
       this.btnExit = new System.Windows.Forms.Button();
+      this.btnBuy = new System.Windows.Forms.Button();
       ((System.ComponentModel.ISupportInitialize)(this.edQuantity)).BeginInit();
       ((System.ComponentModel.ISupportInitialize)(this.edLastPrice)).BeginInit();
       this.SuspendLayout();
@@ -215,6 +216,7 @@ namespace OracleAlpha
             0,
             0});
       this.edLastPrice.Visible = false;
+      this.edLastPrice.ValueChanged += new System.EventHandler(this.edLastPrice_ValueChanged);
       // 
       // btnExit
       // 
@@ -230,11 +232,26 @@ namespace OracleAlpha
       this.btnExit.UseVisualStyleBackColor = false;
       this.btnExit.Click += new System.EventHandler(this.btnExit_Click);
       // 
+      // btnBuy
+      // 
+      this.btnBuy.BackColor = System.Drawing.Color.Firebrick;
+      this.btnBuy.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
+      this.btnBuy.ForeColor = System.Drawing.SystemColors.ButtonFace;
+      this.btnBuy.Location = new System.Drawing.Point(282, 237);
+      this.btnBuy.Name = "btnBuy";
+      this.btnBuy.Size = new System.Drawing.Size(83, 22);
+      this.btnBuy.TabIndex = 43;
+      this.btnBuy.Text = "Buy";
+      this.btnBuy.UseVisualStyleBackColor = false;
+      this.btnBuy.Visible = false;
+      this.btnBuy.Click += new System.EventHandler(this.btnBuy_Click);
+      // 
       // Form1
       // 
       this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
       this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
       this.ClientSize = new System.Drawing.Size(611, 369);
+      this.Controls.Add(this.btnBuy);
       this.Controls.Add(this.btnExit);
       this.Controls.Add(this.edLastPrice);
       this.Controls.Add(this.edTradeHist);
@@ -279,6 +296,7 @@ namespace OracleAlpha
     private System.Windows.Forms.TextBox edTradeHist;
     private System.Windows.Forms.NumericUpDown edLastPrice;
     private System.Windows.Forms.Button btnExit;
-    }
+    private System.Windows.Forms.Button btnBuy;
+  }
 }
 
