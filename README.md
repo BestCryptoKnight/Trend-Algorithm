@@ -6,15 +6,21 @@
   - Bittrex.Net api to access my target exchange. https://github.com/JKorf/Bittrex.Net
   - CryptoExchange.Net cause Bittrex.Net needs it https://github.com/JKorf/CryptoExchange.Net
     - see https://docs.microsoft.com/en-us/dotnet/standard/net-standard for deployment chart.  found I'm not quite 2.1 and since that was giving me error, I removed the deployment.
+    
+  - OracleDelta is the application domain.
+    - TickerTranformer is technology built to catch ticker events, house the data and return execution flow asap asycronously.
+    - Mainform  
 
   - AppCrypto
     - INI file support objects for file IO. thanks https://www.codeproject.com/Articles/20120/INI-Files  by Jacek Gajek 
     - CObjects  Concurrent dictionary as the basic object.  
-    - CQueue
-    - CCache
-    - CAvgDecimalCache
-    - CFileDictionary
-    - SecureStore
+    - CQueue  CObject decendant representing a Queue base built with concurrency in mind.
+    - CCache  similar object representing a Cache built with concurrency in mind. 
+    - CAvgDecimalCache saves a set amount of decimals.  
+    - CFileDictionary is a Persistant Dictionary object 
+    - SecureStore password derived AES encrypted settings file dictionary
+    - CMarkets virtual model dictionary used to track the feed data. 
+    - CPositions virtual balances
 
   - StaticExtensions library of helper extensions I use. https://github.com/mmeents/StaticExtensions
         
@@ -34,7 +40,11 @@
         - The Timer is the heart beat that runs the display refresh code.
         - The data is the Markets and Positions structures.    
     - Trade Simulating
+      - Trade virtual balances.   
+      - needs to add Order Placing and Feeds processing when the order is crossed does simulated trade. 
+           
     - Signal Production
+      - needs to add Trade Signal design and development platform. 
 
 
 
