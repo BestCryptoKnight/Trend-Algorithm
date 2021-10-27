@@ -18,12 +18,15 @@ using System.Windows.Forms;
 
 namespace OracleAlpha {
   public partial class Form1 : Form {
+
+    #region form properties
+    
     public string CallSign = "BittrexTrader";
     public string SettingsKey = "BittrexKP";
     public string[] DefMarketList = {
       "USD-BTC", 
       "USD-ADA", "BTC-ADA", 
-      "USD-DGB", "BTC-DGB",
+  //    "USD-DGB", "BTC-DGB",
       "USD-LTC", "BTC-LTC",
       "USD-DOGE", "BTC-DOGE"
     };
@@ -37,6 +40,7 @@ namespace OracleAlpha {
 
     public CMarkets Markets;
     public CPositions Positions;
+    public PositionButtons PosButs;
     public CTickerQueue TickersLanding;
     
     public string LastTicSeq = "";
@@ -78,12 +82,15 @@ namespace OracleAlpha {
     public string BuyBase = "";
     public string BuyQuote = "";
 
+    #endregion
+
     public Form1() {
       InitializeComponent();
     }
 
     private void Form1_Load(object sender, EventArgs e) {
-      
+      SettingsFilePath = DllExt.MMConLocation();
+
       fCur10 = new Font("Courier New", 10); fCur9 = new Font("Courier New", 9); fCur8 = new Font("Courier New", 8); 
       fCur7 = new Font("Courier New", 7); fCur6 = new Font("Courier New", 6);
       
@@ -99,12 +106,15 @@ namespace OracleAlpha {
 
       Markets = new CMarkets(MarketFilter);
       iCoinCount = Markets.Coins.Keys.Count;
-      Positions = new CPositions(Markets);
-      Positions.AddUSD(20000);  // give some credits
+      Positions = new CPositions(Markets, SettingsFilePath + "\\"+CallSign+"Wallet.ini");
 
-      TickersLanding = new CTickerQueue(Markets);
+      if (Positions.Keys.Count == 0) { 
+        Positions.AddUSD(20000);  // give some credits
+      }
+      // PosButs = new PositionButtons();
+
+      TickersLanding = new CTickerQueue(Markets);      
       
-      SettingsFilePath = DllExt.MMConLocation();
       if (!Directory.Exists(SettingsFilePath)) Directory.CreateDirectory(SettingsFilePath);
       SettingsFileName = SettingsFilePath + "\\" + CallSign + "Settings.ini";
 
@@ -116,7 +126,7 @@ namespace OracleAlpha {
 
     }
 
-    #region toHide
+    #region Load Close Ops
     private async void Form1_FormClosing(object sender, FormClosingEventArgs e) {
       timer1.Enabled = false;
       SaveEditors();
@@ -147,8 +157,7 @@ namespace OracleAlpha {
           this.edTradeHist.Text = message + Environment.NewLine + this.edTradeHist.Text;
       }
     }
-
-   
+       
 
     private Boolean LoadingEditors = false;
     private void LoadEditors() {
@@ -172,8 +181,8 @@ namespace OracleAlpha {
             Settings["LastPrice"] = LastPrice.toStr8();
         }
     }
-    #endregion
 
+   
     private void Form1_ResizeEnd(object sender, EventArgs e) {
       Graphics g = this.CreateGraphics();
       try {
@@ -193,7 +202,7 @@ namespace OracleAlpha {
 
         Single iMCW = fWidth / iCW;
         Single iRow = Convert.ToSingle(fHeight * 0.12);
-        Single AreaMaxHeight = Convert.ToSingle(edTradeHist.Top - iRow - 1);
+        Single AreaMaxHeight = Convert.ToSingle(edOutContainer.Top - iRow - 1);
         iRowH = AreaMaxHeight / 37;
         
         grLeft = Convert.ToDecimal(iCW * 14.6 + fWidth * 0.015);
@@ -234,6 +243,7 @@ namespace OracleAlpha {
                         
             btnExit.Left = edLastPrice.Left + edLastPrice.Width + 2;
             btnExit.Top = cbTrack.Top;
+
             if (label1.Visible) label1.Visible = false;
             if (label2.Visible) label2.Visible = false;
             if (label3.Visible) label3.Visible = false;
@@ -241,7 +251,8 @@ namespace OracleAlpha {
             if (textBox2.Visible) textBox2.Visible = false;
             if (textBox3.Visible) textBox3.Visible = false;
             if (btnContinue.Visible) btnContinue.Visible = false;
-            // if (!edOut.Visible) edOut.Visible = true;
+            if (!edOutContainer.Visible) edOutContainer.Visible = true;
+            if (!edOut.Visible) edOut.Visible = true;
             if (!edTradeHist.Visible) edTradeHist.Visible = true;
             if (!cbTrack.Visible) cbTrack.Visible = false;           
             // if ((cbTrack.Checked) && (Markets.Coins.CurUpCoin != LastCur)) {
@@ -252,7 +263,14 @@ namespace OracleAlpha {
               if(!edQuantity.Visible) edQuantity.Visible = true;
               if(!edLastPrice.Visible) edLastPrice.Visible = true;
               if(!btnBuy.Visible) btnBuy.Visible = true;
-            } else if (iOpMode == 0) {
+              if(btnBuy.Text != "Buy") btnBuy.Text = "Buy";
+            } else if ((iOpMode == 11) && (BuyQuote != "") && (BuyBase != "")) {
+              if (!edQuantity.Visible) edQuantity.Visible = true;
+              if (!edLastPrice.Visible) edLastPrice.Visible = true;
+              if (!btnBuy.Visible) btnBuy.Visible = true;
+              if (btnBuy.Text != "Sell") btnBuy.Text = "Sell";
+            }
+            if (iOpMode == 0) {
               if (edQuantity.Visible) edQuantity.Visible = false;
               if (edLastPrice.Visible) edLastPrice.Visible = false;
               if (btnBuy.Visible) btnBuy.Visible = false;
@@ -270,6 +288,7 @@ namespace OracleAlpha {
             if (!btnContinue.Visible) btnContinue.Visible = true;
             if (edOut.Visible) edOut.Visible = false;
             if (edTradeHist.Visible) edTradeHist.Visible = false;
+            if (edOutContainer.Visible) edOutContainer.Visible = false;
             if (edQuantity.Visible) edQuantity.Visible = false;
             if (cbTrack.Visible) cbTrack.Visible = false;            
             if (edLastPrice.Visible) edLastPrice.Visible = false;
@@ -288,6 +307,7 @@ namespace OracleAlpha {
             if (edOut.Visible) edOut.Visible = false;
             if (edTradeHist.Visible) edTradeHist.Visible = false;
             if (edQuantity.Visible) edQuantity.Visible = false;
+            if (edOutContainer.Visible) edOutContainer.Visible = false;
             if (cbTrack.Visible) cbTrack.Visible = false;           
             if (edLastPrice.Visible) edLastPrice.Visible = false;
             if (btnExit.Visible) btnExit.Visible = false;
@@ -299,49 +319,69 @@ namespace OracleAlpha {
       }
     }
 
+    #endregion
+
     private void Form1_MouseDown(object sender, MouseEventArgs e) {
+      try { 
 
-      Single iLeft = Convert.ToSingle(fWidth * 0.015 + (iCW / 2));
-      decimal iWM = (grLeft - iLeft.toDecimal()) / (iCoinCount - 1);
-           
-      if (iDisplayMode == 30) {
+        Single iLeft = Convert.ToSingle(fWidth * 0.015 + (iCW / 2));
+        decimal iWM = (grLeft - iLeft.toDecimal()) / (iCoinCount - 1);
+        string sFoundCur = "";
 
-        if (e.Y >grTop - grHeightT && e.Y < grTop - iRowH.toDecimal() &&
-          e.X > iLeft && e.X < iLeft.toDecimal() + iWM * (iCoinCount-1)) {
-          int btnX = ((e.X.toDecimal() - iLeft.toDecimal())/iWM).toInt32T();
-          var m = Markets.Coins.Keys.OrderBy(x => x);
-          if (btnX < m.Count()) {
-            int iX = 0;
-            foreach (string sCoin in m) {
-              if (btnX == iX) {
-                BuyQuote = sCoin;
-                BuyBase = Positions.BiggestBaseCoin();
-                string sQuoteMarket = BuyBase+'-'+BuyQuote;
-                CMarket cm = Markets.Coins[sCoin][sQuoteMarket];
-                if (!cm.isNull()&&(cm.Ask.toDecimal() != 0))
-                edLastPrice.Value = cm.Ask.toDecimal();
-                edQuantity.Value = Positions.Balance(BuyBase) / cm.Ask.toDecimal();
-              }
-              iX++;
-            }            
-          }   
 
-          if (BuyQuote != "") {
-            iOpMode = 10;            
+        if (iDisplayMode == 30) {
+
+          if (e.Y >grTop - grHeightT && e.Y < grTop - iRowH.toDecimal() &&
+            e.X > iLeft && e.X < iLeft.toDecimal() + iWM * (iCoinCount-1)) {
+            int btnX = ((e.X.toDecimal() - iLeft.toDecimal())/iWM).toInt32T();
+            var m = Markets.Coins.Keys.OrderBy(x => x);
+            if (btnX < m.Count()) {
+              int iX = 0;
+              foreach (string sCoin in m) {
+                if (btnX == iX) {
+                  BuyQuote = sCoin;
+                  BuyBase = Positions.BiggestBaseCoin();
+                  string sQuoteMarket = BuyBase+'-'+BuyQuote;
+                  CMarket cm = Markets.Coins[sCoin][sQuoteMarket];
+                  if (!cm.isNull()&&(cm.Ask.toDecimal() != 0))
+                  edLastPrice.Value = cm.Ask.toDecimal();
+                  edQuantity.Value = Positions.Balance(BuyBase) / cm.Ask.toDecimal();
+                }
+                iX++;
+              }            
+            }   
+
+            if (BuyQuote != "") {
+              iOpMode = 10;            
+            }
+
+          } else if (e.X > Convert.ToInt32(iLeft + iCW * 3) && e.X < Convert.ToInt32(iLeft + iCW * 23) &&
+             e.Y > Convert.ToInt32(grTop) && e.Y < Convert.ToInt32(grTop + iRowH.toDecimal() * 20) ) {  
+            // in this case do nothing buypassing next else.
+          } else if ( (sFoundCur = PosButs.didHitTest(e.X, e.Y)) != "" ) { 
+             
+              if (sFoundCur != "" && sFoundCur != "USD") { 
+                BuyQuote = sFoundCur;
+                BuyBase = "USD";
+                string sQuoteMarket = BuyBase + '-' + BuyQuote;
+                iOpMode = 11;
+                decimal dBid = Markets.Coins[sFoundCur][sQuoteMarket].Bid.toDecimal();
+                edLastPrice.Value = dBid;
+                edQuantity.Value = Positions.Balance(BuyQuote);
+            }
+
+          
+          } else {
+            BuyQuote = "";
+            BuyBase = "";
+            iOpMode = 0;
           }
 
-        } else if (e.X > Convert.ToInt32(iLeft + iCW * 3) && e.X < Convert.ToInt32(iLeft + iCW * 23) &&
-           e.Y > Convert.ToInt32(grTop) && e.Y < Convert.ToInt32(grTop + iRowH.toDecimal() * 20) ) {  
-          // in this case do nothing buypassing next else.
 
-        } else {
-          BuyQuote = "";
-          BuyBase = "";
-          iOpMode = 0;
+
         }
-
-
-
+      } catch (Exception ex0) {
+        setLogMessage("MC "+ex0.toWalkExcTreePath() );
       }
 
     }
@@ -385,7 +425,7 @@ namespace OracleAlpha {
             )
           );
           #endregion
-
+          es = "100";
           #region draw in coins menu along top.
           Int32 iCount = 0;
           decimal iWM = (grLeft - iLeft.toDecimal())/(iCoinCount-1);
@@ -427,7 +467,7 @@ namespace OracleAlpha {
             }
           }
           #endregion
-
+          es = "200";
           #region draw in Markts by Avg Change 
           foreach (string sCoin in Markets.Coins.ByAvgChange()) {
 
@@ -440,11 +480,11 @@ namespace OracleAlpha {
               Pen aP = new Pen(aC, 1);
               bg.Graphics.DrawRectangle(aP, new Rectangle( //  Selected Coin Rec
                 (fWidth * 0.015).toInt32(),
-                (iRow - (iRowH * 0.5)).toDecimal().toInt32(),
+                (iRow - (iRowH * 0.5)).toDecimal().toInt32T(),
                 Convert.ToInt32(iCW * 13.5),
-                (iRowH * (iCoinCount + 2)).toInt32() ));
+                Convert.ToDecimal((iRowH * (Markets.Coins[sCoin].Count + 1.5))).toInt32T() ));
               string standing = "" + dCoin.toStr8() + " " + sCoin + (sCoin != "USD" ? "  at " +  AvgBuyIn.toStr8(): "") +
-                "  $" + Markets.ToUSD(sCoin, AvgBuyIn).toStr2();
+                "  $" + Markets.ToUSD(sCoin, dCoin).toStr2();
               bg.Graphics.DrawString(standing, fCur8, Brushes.WhiteSmoke, Convert.ToSingle(fWidth * 0.015 + cbTrack.Width), iRowLastCur);
             }
 
@@ -461,7 +501,7 @@ namespace OracleAlpha {
                 fCur7, Brushes.WhiteSmoke, Convert.ToSingle(iLeft - (iCW / 2)), Convert.ToSingle(iRow));
 
             iRow = Convert.ToSingle(iRow + iRowH);
-            if (iRow > edTradeHist.Top) break;
+            if (iRow > edOutContainer.Top) break;
             
             // draw Market data
             Int32 iMarketCount = 0;
@@ -502,171 +542,200 @@ namespace OracleAlpha {
               bg.Graphics.DrawString(sBids, fCur7, sbb, Convert.ToSingle(iLeft + (iCW * 6.5)), Convert.ToSingle(iRow));
 
               iRow = Convert.ToSingle(iRow + iRowH);
-              if (iRow > edTradeHist.Top) break;
+              if (iRow > edOutContainer.Top) break;
             }
-            if (iRow > edTradeHist.Top) break;
+            if (iRow > edOutContainer.Top) break;
           }
 
           #endregion
-
+          es = "300";
           #region graph code
-          Pen aG = new Pen(ColorTranslator.FromHtml("#0058B8"), 1);
-          Int32 iMR = 0;  // Market Ranger counts up 
-          Int32 iCurCoin = 0;
-          string[] ByAvgChange = Markets.Coins.ByAvgChange();
-          foreach (string sCoin in ByAvgChange) {
-            iCurCoin += 1;
-            if (iCurCoin > 2) break;
-            string[] KeysByPrice = Markets.Coins[sCoin].KeysByPriceDelta();
-            Color aC = Markets.Coins[sCoin].CoinColor;
-            
-            foreach (string sMarket in KeysByPrice) {
-              iMR++;
-              CAvgDecimalCache aPDC = Markets.Coins[sCoin][sMarket].PriceDeltaCache;
-              CAvgDecimalCache aUCC = Markets.Coins[sCoin][sMarket].UpdateCountCache;
 
-              if (sCoin == sMarket.ParseFirst("-")) {
-                aC = Markets.Coins[sCoin].CoinColor2;
-              }
-              Pen aP = new Pen(aC, 1);
+          if (UpdateNo > 5) { 
+            Pen aG = new Pen(ColorTranslator.FromHtml("#0058B8"), 1);
+            Int32 iMR = 0;  // Market Ranger counts up 
+            Int32 iCurCoin = 0;
+            string[] ByAvgChange = Markets.Coins.ByAvgChange();
+            es = "301";
+            foreach (string sCoin in ByAvgChange) {
+              iCurCoin += 1;
+              if (iCurCoin > 2) break;
+              es = "302";
+              string[] KeysByPrice = Markets.Coins[sCoin].KeysByPriceDelta();
+              Color aC = Markets.Coins[sCoin].CoinColor;
 
-              decimal dChange = 0;
-              decimal dValue = 0;
-              decimal HeightRatio = grHeight / ((PriceChangeMax * 1.05m) - (PriceChangeMin * 1.05m));
-              if (iCurCoin == 1) {  //
-                //chart middle row
-                bg.Graphics.DrawLine(aG, grLeft.toFloat(), (grTop + grHeight / 2).toFloat(), (grLeft + grWidth).toFloat(), (grTop + grHeight / 2).toFloat());
-                //minor PriceChangeMax Min lines with lables.
-                bg.Graphics.DrawLine(aG, grLeft.toFloat(), (grTop + grHeight / 2 + (PriceChangeMax * HeightRatio)).toFloat(), (grLeft + grWidth).toFloat(), (grTop + grHeight / 2 + (PriceChangeMax * HeightRatio)).toFloat());
-                bg.Graphics.DrawString(PriceChangeMax.toStr4(), fCur6, Brushes.LightGray, grLeft.toFloat(), (grTop + grHeight / 2 + (PriceChangeMax * HeightRatio)).toFloat());
-                bg.Graphics.DrawLine(aG, grLeft.toFloat(), (grTop + grHeight / 2 + (PriceChangeMin * HeightRatio)).toFloat(), (grLeft + grWidth).toFloat(), (grTop + grHeight / 2 + (PriceChangeMin * HeightRatio)).toFloat());
-                bg.Graphics.DrawString(PriceChangeMin.toStr4(), fCur6, Brushes.LightGray, grLeft.toFloat(), (grTop + grHeight / 2 + (PriceChangeMin * HeightRatio)).toFloat());
-              
-              }
+              es = "303";
+              foreach (string sMarket in KeysByPrice) {
+                iMR++;
+                CAvgDecimalCache aPDC = Markets.Coins[sCoin][sMarket].PriceDeltaCache;
+                CAvgDecimalCache aUCC = Markets.Coins[sCoin][sMarket].UpdateCountCache;
 
-              Int32 iSpot = 0;
-              List<Point> lp = new List<Point>();
-              Int32 PDCount = aPDC.Keys.Count - 1;
-              decimal dHR2 = grHeightT / 40;
-              foreach (Int64 key in aUCC.Keys.OrderBy(x => x)) {
-                dChange = (decimal)aUCC[key];
-                Int32 x = Convert.ToInt32(grLeft + ((grWidth / 24.25m) * (iSpot + 0.125m)) + (iMR * 2));
-                Int32 y = Convert.ToInt32(grTop - (dChange * dHR2));
-
-                bg.Graphics.DrawLine(aP, x, grTop.toInt32() - 1, x, y - 1);
-                bg.Graphics.DrawLine(aP, x + 1, grTop.toInt32() - 1, x + 1, y - 1);
-
-                iSpot += 1;
-              }
-
-              iSpot = 0;
-              foreach (Int64 key in aPDC.Keys.OrderBy(x => x)) {
-                if (iSpot > 23) break;
-
-                dChange = (decimal)aPDC[key];
-                dValue += dChange;
-
-                Int32 x = Convert.ToInt32(grLeft + ((grWidth / 24.25m) * (iSpot + 0.125m)));
-                Int32 y = Convert.ToInt32((grTop + (grHeight / 2)) + (dValue * HeightRatio));
-                lp.Add(new Point(x, y));
-                bg.Graphics.DrawLine(Pens.WhiteSmoke, x, grTop.toInt32(), x, (grTop + 4).toInt32());
-
-                if ((iSpot > 2) && (iSpot == PDCount - 2)) {
-                  bg.Graphics.DrawString(sMarket, fCur6, Brushes.LightGray, x, y);
+                if (sCoin == sMarket.ParseFirst("-")) {
+                  aC = Markets.Coins[sCoin].CoinColor2;
                 }
-                iSpot++;
+                Pen aP = new Pen(aC, 1);
+
+                decimal dChange = 0;
+                decimal dValue = 0;
+                decimal dPCMa = ((PriceChangeMax * 1.05m) - (PriceChangeMin * 1.05m));
+                if (dPCMa == 0) { dPCMa = 1; }
+                decimal HeightRatio = grHeight / dPCMa;
+                es = "331 "+sMarket;
+                if (iCurCoin == 1) {  //
+                  //chart middle row
+                  bg.Graphics.DrawLine(aG, grLeft.toFloat(), (grTop + grHeight / 2).toFloat(), (grLeft + grWidth).toFloat(), (grTop + grHeight / 2).toFloat());
+                  //minor PriceChangeMax Min lines with lables.
+                  bg.Graphics.DrawLine(aG, grLeft.toFloat(), (grTop + grHeight / 2 + (PriceChangeMax * HeightRatio)).toFloat(), (grLeft + grWidth).toFloat(), (grTop + grHeight / 2 + (PriceChangeMax * HeightRatio)).toFloat());
+                  bg.Graphics.DrawString(PriceChangeMax.toStr4(), fCur6, Brushes.LightGray, grLeft.toFloat(), (grTop + grHeight / 2 + (PriceChangeMax * HeightRatio)).toFloat());
+                  bg.Graphics.DrawLine(aG, grLeft.toFloat(), (grTop + grHeight / 2 + (PriceChangeMin * HeightRatio)).toFloat(), (grLeft + grWidth).toFloat(), (grTop + grHeight / 2 + (PriceChangeMin * HeightRatio)).toFloat());
+                  bg.Graphics.DrawString(PriceChangeMin.toStr4(), fCur6, Brushes.LightGray, grLeft.toFloat(), (grTop + grHeight / 2 + (PriceChangeMin * HeightRatio)).toFloat());
+              
+                }
+
+                Int32 iSpot = 0;
+                List<Point> lp = new List<Point>();
+                Int32 PDCount = aPDC.Keys.Count - 1;
+                decimal dHR2 = grHeightT / 40;
+                foreach (Int64 key in aUCC.Keys.OrderBy(x => x)) {
+                  dChange = (decimal)aUCC[key];
+                  Int32 x = Convert.ToInt32(grLeft + ((grWidth / 24.25m) * (iSpot + 0.125m)) + (iMR * 2));
+                  Int32 y = Convert.ToInt32(grTop - (dChange * dHR2));
+
+                  bg.Graphics.DrawLine(aP, x, grTop.toInt32() - 1, x, y - 1);
+                  bg.Graphics.DrawLine(aP, x + 1, grTop.toInt32() - 1, x + 1, y - 1);
+
+                  iSpot += 1;
+                }
+
+                es = "332";
+
+                iSpot = 0;
+                lp.Clear();
+                foreach (Int64 key in aPDC.Keys.OrderBy(x => x)) {
+                  if (iSpot > 23) break;
+                  es = "332a";
+                  dChange = (decimal)aPDC[key];
+                  dValue += dChange;
+                  es = "332b";
+                  Int32 x = Convert.ToInt32(grLeft + ((grWidth / 24.25m) * (iSpot + 0.125m)));
+                  Int32 y = Convert.ToInt32((grTop + (grHeight / 2)) + (dValue * HeightRatio));
+                  lp.Add(new Point(x, y));
+                  bg.Graphics.DrawLine(Pens.WhiteSmoke, x, grTop.toInt32(), x, (grTop + 4).toInt32());
+
+                  if ((iSpot > 2) && (iSpot == PDCount - 2)) {
+                    bg.Graphics.DrawString(sMarket, fCur6, Brushes.LightGray, x, y);
+                  }
+                  iSpot++;
+                  es = "332c";
+                }
+                es = "332d";
+                if (lp.Count>1) bg.Graphics.DrawLines(aP, lp.ToArray());
+
+                es = "333";
+
               }
-              bg.Graphics.DrawLines(aP, lp.ToArray());
-
-
-
             }
           }
-
           #endregion
-
+          es = "400";
           bg.Graphics.DrawString(DateTime.Now.ToStrDateMM() +
             " " + UpdateNo.toString() +
             "-" + NextUpdateAvg.Value.Subtract(DateTime.Now).TotalSeconds.toInt32().ToString() +
-            " s:" + TickersLanding.LastTicSeq + " "+ LastMessage , 
+            " s:" +  " "+ LastMessage , 
             fCur8, Brushes.WhiteSmoke, Convert.ToSingle(fWidth * 0.015), Convert.ToSingle(fHeight * 0.015));
 
-          if ((iOpMode==10)&&(BuyQuote != "")) {
+          if ((iOpMode>=10)&&(BuyQuote != "")) {
             Brush abmm = new SolidBrush(ColorTranslator.FromHtml("#000B17"));
             bg.Graphics.FillRectangle(abmm, new Rectangle(
              Convert.ToInt32(iLeft + iCW * 3),
              Convert.ToInt32(grTop),
              Convert.ToInt32(iCW * 20),
              Convert.ToInt32(iRowH * 20)
-           ));
-           bg.Graphics.DrawRectangle(Pens.WhiteSmoke, new Rectangle(
-             Convert.ToInt32(iLeft + iCW * 3),
-             Convert.ToInt32(grTop),
-             Convert.ToInt32(iCW * 20),
-             Convert.ToInt32(iRowH * 20)
-           ));
+             ));
+            bg.Graphics.DrawRectangle(Pens.WhiteSmoke, new Rectangle(
+               Convert.ToInt32(iLeft + iCW * 3),
+               Convert.ToInt32(grTop),
+               Convert.ToInt32(iCW * 20),
+               Convert.ToInt32(iRowH * 20)
+             ));
+            string sOut = (iOpMode==10? " Buy " + BuyQuote + " with " + BuyBase : " Sell " + BuyQuote + " for " + BuyBase);
+            bg.Graphics.DrawString( sOut, fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft + iCW*3.5), Convert.ToSingle(grTop + iRowH.toDecimal() * 0.5m));
 
-           bg.Graphics.DrawString( " Buy " + BuyQuote+" with "+BuyBase,
-             fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft + iCW*3.5), Convert.ToSingle(grTop + iRowH.toDecimal() * 0.5m));
 
-           bg.Graphics.DrawString(" Quantity " + BuyQuote,
-             fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft + iCW * 10), Convert.ToSingle(grTop + iRowH.toDecimal() * 4));
+            bg.Graphics.DrawString(" Quantity " + BuyQuote,
+              fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft + iCW * 10), Convert.ToSingle(grTop + iRowH.toDecimal() * 4));
 
-           bg.Graphics.DrawString(" Price "+BuyBase ,
-             fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft + iCW * 10), Convert.ToSingle(grTop + iRowH.toDecimal() * 7));
+            bg.Graphics.DrawString(" Price "+BuyBase ,
+              fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft + iCW * 10), Convert.ToSingle(grTop + iRowH.toDecimal() * 7));
 
-           decimal dTotal =  edQuantity.Value * edLastPrice.Value;
-           bg.Graphics.DrawString(" Total  "+ dTotal.toStr8() + BuyBase,
-             fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft + iCW * 10), Convert.ToSingle(grTop + iRowH.toDecimal() * 9));
+            decimal dTotal =  edQuantity.Value * edLastPrice.Value;
+            bg.Graphics.DrawString(" Total  "+ dTotal.toStr8() + BuyBase,
+              fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft + iCW * 10), Convert.ToSingle(grTop + iRowH.toDecimal() * 9));
 
-          decimal dTradeFee = dTotal * TradeFee;  
-           bg.Graphics.DrawString(" Fee "+ (TradeFee*100).toStr4()+"%  " + dTradeFee.toStr8() + BuyBase,
-             fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft + iCW * 10), Convert.ToSingle(grTop + iRowH.toDecimal() * 10));
+            decimal dTradeFee = dTotal * TradeFee;  
+            bg.Graphics.DrawString(" Fee "+ (TradeFee*100).toStr4()+"%  " + dTradeFee.toStr8() + BuyBase,
+              fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft + iCW * 10), Convert.ToSingle(grTop + iRowH.toDecimal() * 10));
 
-           bg.Graphics.DrawString(" Est (Total - fee): " + (dTotal - dTradeFee).toStr8() + BuyBase,
+            bg.Graphics.DrawString(" Est (Total - fee): " + (dTotal - dTradeFee).toStr8() + BuyBase,
               fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft + iCW * 10), Convert.ToSingle(grTop + iRowH.toDecimal() * 11));
 
 
 
 
           }
-
+          es = "500";
           #region draw positions
           iCount = 0;
-          iRow = edTradeHist.Top;
-          iWM = (Width - iLeft.toDecimal()- 4) / iCoinCount;
+          iRow = edOutContainer.Top;
+          iWM =  iCoinCount!=0 ?(Width - iLeft.toDecimal()- 4) / iCoinCount : 0;
+          PositionButtons NewPosButs = new PositionButtons();
           foreach (string sCoin in Markets.Coins.Keys.OrderBy(x => x)) {
             decimal aBal = Positions.Balance(sCoin);
             if ( aBal > 0.0005m) {
               Color aC = Markets.Coins[sCoin].CoinColor;
               Pen aP = new Pen(aC, 1);
-              Brush abmm = new SolidBrush(aC);              
-              bg.Graphics.DrawRectangle(aP,
+              Brush abmm = new SolidBrush(aC);
+              NewPosButs[sCoin] = new PositionButton(
                 new Rectangle(
                   Convert.ToInt32(iLeft.toDecimal() + iWM * iCount - (iCW / 2).toDecimal()),
-                  Convert.ToInt32(edTradeHist.Top - grHeightT),
+                  Convert.ToInt32(edOutContainer.Top - grHeightT),
                   Convert.ToInt32(iWM - 2),
-                  Convert.ToInt32(grHeightT - iRowH.toDecimal()/2)
-                )
-              );
-              Decimal dAvgChange = Markets.Coins[sCoin].AvgChange;
-              Brush sbaa = (System.Math.Abs(dAvgChange) < 0.0005m ? Brushes.WhiteSmoke : ((dAvgChange < 0) ? Brushes.Red : Brushes.Chartreuse));
-              sRow = "    %" + (100 * dAvgChange).toStr4();
-              bg.Graphics.DrawString(sRow, fCur8, sbaa, Convert.ToSingle(iLeft.toDecimal() + iWM * iCount - (3 * iCW / 8).toDecimal()), Convert.ToSingle(iRow - (iRowH * 3.5)));
-              bg.Graphics.DrawString(sCoin, fCur8, abmm, Convert.ToSingle(iLeft.toDecimal() + iWM * iCount - (3 * iCW / 8).toDecimal()), Convert.ToSingle(iRow - (iRowH * 3.5)));
-              bg.Graphics.DrawString(aBal.toStr8() + " " + sCoin, fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft.toDecimal() + iWM * iCount - (3 * iCW / 8).toDecimal()), Convert.ToSingle(iRow - (iRowH * 2.5)));
-              bg.Graphics.DrawString(Positions.AvgPrice(sCoin).toStr8(), fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft.toDecimal() + iWM * iCount - (3 * iCW / 8).toDecimal()), Convert.ToSingle(iRow - (iRowH * 1.5)));
+                  Convert.ToInt32(grHeightT - iRowH.toDecimal() / 2)
+                ), sCoin);
+              bg.Graphics.DrawRectangle(aP, NewPosButs[sCoin].Location );
+              Decimal dPricePaid = Positions.PricePaidUSD(sCoin);
+              Decimal dAvgPriceUSD = Markets.Coins[sCoin].AvgPriceUSD;
+              Decimal dAvgChange = sCoin=="USD" ? 1 :(aBal * dAvgPriceUSD) - (aBal * dPricePaid); 
+
+              Brush sbaa = (System.Math.Abs(dAvgChange) < 0.0005m ? Brushes.WhiteSmoke : (
+                (dAvgChange < 0) ? Brushes.Red : Brushes.Chartreuse));
+              sRow = "      " + dAvgPriceUSD.toStr4()+"  "+dAvgChange.toStr4();
+              bg.Graphics.DrawString(sRow, fCur8, sbaa, 
+                Convert.ToSingle(iLeft.toDecimal() + iWM * iCount - (3 * iCW / 8).toDecimal()), 
+                Convert.ToSingle(iRow - (iRowH * 4)));
+              bg.Graphics.DrawString(sCoin, fCur8, abmm, 
+                Convert.ToSingle(iLeft.toDecimal() + iWM * iCount - (3 * iCW / 8).toDecimal()), 
+                Convert.ToSingle(iRow - (iRowH * 4)));
+
+              bg.Graphics.DrawString(aBal.toStr8() + " " + sCoin, fCur8, Brushes.WhiteSmoke, 
+                Convert.ToSingle(iLeft.toDecimal() + iWM * iCount - (3 * iCW / 8).toDecimal()), 
+                Convert.ToSingle(iRow - (iRowH * 3)));
+
+              bg.Graphics.DrawString(dPricePaid.toStr4()+"  "+ (aBal*dPricePaid).toStr4() , fCur8, Brushes.WhiteSmoke, 
+                Convert.ToSingle(iLeft.toDecimal() + iWM * iCount - (3 * iCW / 8).toDecimal()), 
+                Convert.ToSingle(iRow - (iRowH * 2)));
               
               iCount += 1;
             }
           }
-
+          PosButs = NewPosButs;
 
           #endregion
 
           bg.Render(g);
         } catch (Exception e) {
           e.toAppLog("Refresh " + es);
+          setTradeMsg(e.toWalkExcTreePath());
         } finally {
           bg.Dispose();
         }
@@ -749,7 +818,7 @@ namespace OracleAlpha {
         DoUpdateControlVisibility();
     }
 
-
+    #region Update Timer
     DateTime theNow;
     //   DateTime? NextGoTime = null;
     DateTime? NextUpdateAvg = null;
@@ -795,10 +864,11 @@ namespace OracleAlpha {
 
       DoRedraw();    
          
-      /* ← ↑ → ↓ */
       timer1.Enabled = true;
 
     }
+
+    #endregion
 
     private void TradeLastTo(string TargetCur, Boolean UseStops) {
       string TargetMarket = "";
@@ -932,14 +1002,30 @@ namespace OracleAlpha {
     }
 
     private void btnBuy_Click(object sender, EventArgs e) {
-
-
+      try { 
+        if (iOpMode == 10) { 
+          Positions.BuyAsset(BuyQuote, BuyBase + '-' + BuyQuote, edQuantity.Value);
+        } else if (iOpMode==11) {
+          Positions.BuyAsset(BuyBase, BuyBase + '-' + BuyQuote, edQuantity.Value);
+        }      
+        
+        BuyQuote = "";
+        BuyBase = "";
+        iOpMode = 0;
+      } catch (Exception ex0) {
+        setTradeMsg(ex0.toWalkExcTreePath());
+      }
     }
 
 
     private void edLastPrice_ValueChanged(object sender, EventArgs e) {
       decimal dBB = Positions.Balance(BuyBase);
+      dBB = dBB - dBB * Markets.TradeFee; 
       edQuantity.Value = dBB / edLastPrice.Value;
+    }
+
+    private void textBox1_KeyUp(object sender, KeyEventArgs e) {
+      if (e.KeyCode == Keys.Enter) { btnContinue_Click(sender, null); }
     }
 
     private void edQuantity_ValueChanged(object sender, EventArgs e) {

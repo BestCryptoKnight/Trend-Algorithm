@@ -4,16 +4,12 @@ using System;
 namespace AppCrypto
 {
 
-    public class CFileDictionary : CObject
-    {
+    public class CFileDictionary : CObject {
         string FileName;
-        //ConcurrentDictionary<string, string> cache;
         IniFile f;
 
-        public CFileDictionary(string sFileName) : base()
-        {
+        public CFileDictionary(string sFileName) : base() {
             FileName = sFileName;
-            //    cache = new ConcurrentDictionary<string, string>();
             f = IniFile.FromFile(FileName);
         }
 

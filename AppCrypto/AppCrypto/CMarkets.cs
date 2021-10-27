@@ -15,11 +15,10 @@ namespace AppCrypto {
     public string BaseCur { get { return base["MarketName"].toString().ParseFirst("-"); } }
 
     public void AdvanceAverages() {
-      Ask = Ask;
-      Bid = Bid;
-      UpdateCount = 0;
-      if (Ask == 0) {
-        TrimAvgCache(1);
+      if (UpdateCount > 0) { 
+        Ask = Ask;
+        Bid = Bid;
+        UpdateCount = 0;
       }
     }
     public decimal Ask {
@@ -27,11 +26,15 @@ namespace AppCrypto {
         return ((CAvgDecimalCache)base["Ask"]).toDecimal();
       }
       set {
-        CAvgDecimalCache aAsk = ((CAvgDecimalCache)base["Ask"]);
-        aAsk.Add(value);
-        decimal aAvg = aAsk.toAvg();
-        this.AskAvg = aAvg;
-        this.AskDelta = (aAvg == 0 ? 0 : ((Ask / aAvg > 1) ? Ask / aAvg - 1 : (1 - (Ask / aAvg)) * -1));
+        if(value != 0) { 
+          CAvgDecimalCache aAsk = ((CAvgDecimalCache)base["Ask"]);
+          aAsk.Add(value);
+          decimal aAvg = aAsk.toAvg();
+          this.AskAvg = aAvg;
+          this.AskDelta = (aAvg == 0 ? 0 :
+            ((Ask / aAvg > 1) ? Ask / aAvg - 1 : 
+              (1 - (Ask / aAvg)) * -1));
+        }
       }
     }
 
@@ -197,16 +200,16 @@ namespace AppCrypto {
     public decimal FindQuoteAmountToBuy( decimal aBaseAmount ) {
       decimal a = Ask;       
       decimal r = (aBaseAmount - (aBaseAmount * Owner.TradeFee)) / a;
-      decimal aDiff = aBaseAmount - (r * a + r * a * Owner.TradeFee);
-      return r + ((aDiff > 0.00001999m) ? FindQuoteAmountToBuy(aDiff):0);
+     // decimal aDiff = aBaseAmount - (r * a + r * a * Owner.TradeFee);
+      return r; //+ ((aDiff > 0.00001999m) ? FindQuoteAmountToBuy(aDiff):0);
     }
 
     //sell aka aQuoteAmount
     public decimal FindBaseAmountToBuy(decimal aQuoteAmount) {
-      decimal a = Ask;
+      decimal a = Bid;
       decimal r = a * aQuoteAmount - a* aQuoteAmount* Owner.TradeFee;      
-      decimal aDiff = aQuoteAmount - (r * (1+ Owner.TradeFee))/a;
-      return r + ((aDiff > 0.00001999m) ? FindBaseAmountToBuy(aDiff) : 0);
+      //decimal aDiff = aQuoteAmount - (r * (1+ Owner.TradeFee))/a;
+      return r; //+ ((aDiff > 0.00001999m) ? FindBaseAmountToBuy(aDiff) : 0);
     }
 
     public CAvgDecimalCache UpdateCountCache {
@@ -303,6 +306,7 @@ namespace AppCrypto {
   }
 
   public class CMarketList : CObject {
+    public CMarkets Owner;
     public string Coin;
     public Int32 ColorIndex = 0;
     public string[] SomeColors = {
@@ -335,6 +339,27 @@ namespace AppCrypto {
         return C[1];
       }
     }
+
+    public decimal AvgPriceUSD {
+      get {
+        Decimal r = 0, x = 0, c = 0;
+        if (Coin == "USD") { return 1;}
+        else if (Coin == "BTC") { return Owner.Coins["BTC"]["USD-BTC"].Ask; }
+        else { 
+          foreach (string sMarket in base.Keys) {
+            string sBaseCur = sMarket.ParseFirst("-");
+            string sQuoteCur = sMarket.ParseLast("-");
+            if ( sBaseCur != "USD") {             
+              x = Owner.ToUSD( sBaseCur,  Owner.Coins[sQuoteCur][sMarket].Ask );  
+            } else {           
+              x = ((CMarket)base[sMarket]).Ask;
+            }
+            r = r + x;
+          }
+          return ((base.Keys.Count > 0) ? r / base.Keys.Count : 0);
+        }
+      }
+    }
     public Decimal AvgChange {
       get {
         Decimal r = 0;
@@ -353,7 +378,8 @@ namespace AppCrypto {
         return r;
       }
     }
-    public CMarketList(string aCoin) : base() {
+    public CMarketList(CMarkets aOwner, string aCoin) : base() {
+      Owner = aOwner;
       Coin = aCoin;
       Int32 h = Encoding.ASCII.GetBytes(Coin).toSum();
       ColorIndex = (h % 61);
@@ -394,9 +420,9 @@ namespace AppCrypto {
       foreach (string sMarket in MarketFilter.Keys) {
         CMarket aM = new CMarket(this, sMarket);
         base[sMarket] = aM;
-        if (!(Coins[aM.QuoteCur] is CMarketList)) Coins[aM.QuoteCur] = new CMarketList(aM.QuoteCur);
+        if (!(Coins[aM.QuoteCur] is CMarketList)) Coins[aM.QuoteCur] = new CMarketList(this, aM.QuoteCur);
         Coins[aM.QuoteCur][sMarket] = aM;
-        if (!(Coins[aM.BaseCur] is CMarketList)) Coins[aM.BaseCur] = new CMarketList(aM.BaseCur);
+        if (!(Coins[aM.BaseCur] is CMarketList)) Coins[aM.BaseCur] = new CMarketList(this, aM.BaseCur);
         Coins[aM.BaseCur][sMarket] = new CInvMarket(this, sMarket);
       }
     }
@@ -407,13 +433,16 @@ namespace AppCrypto {
 
 
     public Decimal BTCtoUSD(Decimal aBTCValue) {
-      return (this["USD-BTC"].Bid + (this["USD-BTC"].Ask - this["USD-BTC"].Bid) / 2) * aBTCValue;
+      //+ (this["USD-BTC"].Ask - this["USD-BTC"].Bid) / 2
+      return (this["USD-BTC"].Bid ) * aBTCValue;
     }
     public Decimal ETHtoUSD(Decimal aETHValue) {
-      return (this["USD-ETH"].Bid + (this["USD-ETH"].Ask - this["USD-ETH"].Bid) / 2) * aETHValue;
+      //+ (this["USD-ETH"].Ask - this["USD-ETH"].Bid) / 2)
+      return (this["USD-ETH"].Bid)  * aETHValue;
     }
     public Decimal ADAtoUSD(Decimal aADAValue) {
-      return (this["USD-ADA"].Bid + (this["USD-ADA"].Ask - this["USD-ADA"].Bid) / 2) * aADAValue;
+      //+ (this["USD-ADA"].Ask - this["USD-ADA"].Bid) / 2
+      return (this["USD-ADA"].Bid ) * aADAValue;
     }
 
     public Decimal ToUSD(string aCur, Decimal aCurValue) {
@@ -431,15 +460,18 @@ namespace AppCrypto {
         default:
           string sMarkAttempt = "USD-" + aCur;
           if (this[sMarkAttempt] is CMarket) {
-            aRet = (this[sMarkAttempt].Bid + (this[sMarkAttempt].Ask - this[sMarkAttempt].Bid) / 2) * aCurValue;
+            //+ (this[sMarkAttempt].Ask - this[sMarkAttempt].Bid) / 2
+            aRet = (this[sMarkAttempt].Bid ) * aCurValue;
           } else {
             sMarkAttempt = "BTC-" + aCur;
             if (this[sMarkAttempt] is CMarket) {
-              aRet = BTCtoUSD((this[sMarkAttempt].Bid + (this[sMarkAttempt].Ask - this[sMarkAttempt].Bid) / 2) * aCurValue);
+              //+ (this[sMarkAttempt].Ask - this[sMarkAttempt].Bid) / 2
+              aRet = BTCtoUSD((this[sMarkAttempt].Bid ) * aCurValue);
             } else {
               sMarkAttempt = "ETH-" + aCur;
               if (this[sMarkAttempt] is CMarket) {
-                aRet = ETHtoUSD((this[sMarkAttempt].Bid + (this[sMarkAttempt].Ask - this[sMarkAttempt].Bid) / 2) * aCurValue);
+                //+ (this[sMarkAttempt].Ask - this[sMarkAttempt].Bid) / 2
+                aRet = ETHtoUSD((this[sMarkAttempt].Bid ) * aCurValue);
               } else throw new Exception("Unknown Currency " + aCur);
             }
           }

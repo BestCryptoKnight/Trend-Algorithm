@@ -60,7 +60,6 @@ namespace OracleAlpha {
   }
 
   public class CTickerQueue : CQueue {
-    public string LastTicSeq = "";
     CMarkets Markets;
     public CTickerQueue(CMarkets TheMarkets) : base() {
       Markets = TheMarkets;
@@ -68,7 +67,6 @@ namespace OracleAlpha {
     public void AddTic(BittrexTick aObj) {
       Nonce++;
       base[Nonce] = new TickerTranformer(this, Nonce, Markets, aObj);
-      LastTicSeq = Nonce.toString();
     }
   }
 

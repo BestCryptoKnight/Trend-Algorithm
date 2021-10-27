@@ -30,7 +30,6 @@ namespace OracleAlpha
     private void InitializeComponent()
     {
       this.components = new System.ComponentModel.Container();
-      this.edOut = new System.Windows.Forms.TextBox();
       this.label3 = new System.Windows.Forms.Label();
       this.label2 = new System.Windows.Forms.Label();
       this.label1 = new System.Windows.Forms.Label();
@@ -41,23 +40,19 @@ namespace OracleAlpha
       this.timer1 = new System.Windows.Forms.Timer(this.components);
       this.edQuantity = new System.Windows.Forms.NumericUpDown();
       this.cbTrack = new System.Windows.Forms.CheckBox();
-      this.edTradeHist = new System.Windows.Forms.TextBox();
       this.edLastPrice = new System.Windows.Forms.NumericUpDown();
       this.btnExit = new System.Windows.Forms.Button();
       this.btnBuy = new System.Windows.Forms.Button();
+      this.edOutContainer = new System.Windows.Forms.SplitContainer();
+      this.edTradeHist = new System.Windows.Forms.TextBox();
+      this.edOut = new System.Windows.Forms.TextBox();
       ((System.ComponentModel.ISupportInitialize)(this.edQuantity)).BeginInit();
       ((System.ComponentModel.ISupportInitialize)(this.edLastPrice)).BeginInit();
+      ((System.ComponentModel.ISupportInitialize)(this.edOutContainer)).BeginInit();
+      this.edOutContainer.Panel1.SuspendLayout();
+      this.edOutContainer.Panel2.SuspendLayout();
+      this.edOutContainer.SuspendLayout();
       this.SuspendLayout();
-      // 
-      // edOut
-      // 
-      this.edOut.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-      this.edOut.Location = new System.Drawing.Point(405, 109);
-      this.edOut.Margin = new System.Windows.Forms.Padding(2);
-      this.edOut.Multiline = true;
-      this.edOut.Name = "edOut";
-      this.edOut.Size = new System.Drawing.Size(205, 180);
-      this.edOut.TabIndex = 36;
       // 
       // label3
       // 
@@ -97,9 +92,9 @@ namespace OracleAlpha
       // btnContinue
       // 
       this.btnContinue.DialogResult = System.Windows.Forms.DialogResult.OK;
-      this.btnContinue.Location = new System.Drawing.Point(201, 140);
+      this.btnContinue.Location = new System.Drawing.Point(55, 225);
       this.btnContinue.Name = "btnContinue";
-      this.btnContinue.Size = new System.Drawing.Size(75, 23);
+      this.btnContinue.Size = new System.Drawing.Size(60, 34);
       this.btnContinue.TabIndex = 32;
       this.btnContinue.Text = "&Continue";
       this.btnContinue.UseVisualStyleBackColor = true;
@@ -123,10 +118,12 @@ namespace OracleAlpha
       // 
       // textBox1
       // 
+      this.textBox1.AcceptsReturn = true;
       this.textBox1.Location = new System.Drawing.Point(201, 29);
       this.textBox1.Name = "textBox1";
       this.textBox1.Size = new System.Drawing.Size(214, 20);
       this.textBox1.TabIndex = 29;
+      this.textBox1.KeyUp += new System.Windows.Forms.KeyEventHandler(this.textBox1_KeyUp);
       // 
       // timer1
       // 
@@ -142,11 +139,11 @@ namespace OracleAlpha
       this.edQuantity.ForeColor = System.Drawing.Color.FloralWhite;
       this.edQuantity.ImeMode = System.Windows.Forms.ImeMode.Off;
       this.edQuantity.Increment = new decimal(new int[] {
-            5,
+            1,
             0,
             0,
-            0});
-      this.edQuantity.Location = new System.Drawing.Point(201, 212);
+            524288});
+      this.edQuantity.Location = new System.Drawing.Point(201, 176);
       this.edQuantity.Maximum = new decimal(new int[] {
             999999,
             0,
@@ -178,16 +175,6 @@ namespace OracleAlpha
       this.cbTrack.UseVisualStyleBackColor = false;
       this.cbTrack.CheckedChanged += new System.EventHandler(this.cbTrack_CheckedChanged);
       // 
-      // edTradeHist
-      // 
-      this.edTradeHist.Dock = System.Windows.Forms.DockStyle.Bottom;
-      this.edTradeHist.Location = new System.Drawing.Point(0, 290);
-      this.edTradeHist.Margin = new System.Windows.Forms.Padding(2);
-      this.edTradeHist.Multiline = true;
-      this.edTradeHist.Name = "edTradeHist";
-      this.edTradeHist.Size = new System.Drawing.Size(611, 79);
-      this.edTradeHist.TabIndex = 40;
-      // 
       // edLastPrice
       // 
       this.edLastPrice.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(33)))), ((int)(((byte)(69)))));
@@ -201,7 +188,7 @@ namespace OracleAlpha
             0,
             0,
             524288});
-      this.edLastPrice.Location = new System.Drawing.Point(201, 178);
+      this.edLastPrice.Location = new System.Drawing.Point(201, 142);
       this.edLastPrice.Maximum = new decimal(new int[] {
             999999,
             0,
@@ -224,9 +211,9 @@ namespace OracleAlpha
       this.btnExit.DialogResult = System.Windows.Forms.DialogResult.OK;
       this.btnExit.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
       this.btnExit.ForeColor = System.Drawing.SystemColors.ButtonFace;
-      this.btnExit.Location = new System.Drawing.Point(282, 141);
+      this.btnExit.Location = new System.Drawing.Point(167, 226);
       this.btnExit.Name = "btnExit";
-      this.btnExit.Size = new System.Drawing.Size(83, 22);
+      this.btnExit.Size = new System.Drawing.Size(68, 33);
       this.btnExit.TabIndex = 42;
       this.btnExit.Text = "Exit";
       this.btnExit.UseVisualStyleBackColor = false;
@@ -237,24 +224,61 @@ namespace OracleAlpha
       this.btnBuy.BackColor = System.Drawing.Color.Firebrick;
       this.btnBuy.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
       this.btnBuy.ForeColor = System.Drawing.SystemColors.ButtonFace;
-      this.btnBuy.Location = new System.Drawing.Point(282, 237);
+      this.btnBuy.Location = new System.Drawing.Point(282, 226);
       this.btnBuy.Name = "btnBuy";
-      this.btnBuy.Size = new System.Drawing.Size(83, 22);
+      this.btnBuy.Size = new System.Drawing.Size(68, 33);
       this.btnBuy.TabIndex = 43;
       this.btnBuy.Text = "Buy";
       this.btnBuy.UseVisualStyleBackColor = false;
       this.btnBuy.Visible = false;
       this.btnBuy.Click += new System.EventHandler(this.btnBuy_Click);
       // 
+      // edOutContainer
+      // 
+      this.edOutContainer.Dock = System.Windows.Forms.DockStyle.Bottom;
+      this.edOutContainer.Location = new System.Drawing.Point(0, 441);
+      this.edOutContainer.Name = "edOutContainer";
+      // 
+      // edOutContainer.Panel1
+      // 
+      this.edOutContainer.Panel1.Controls.Add(this.edTradeHist);
+      // 
+      // edOutContainer.Panel2
+      // 
+      this.edOutContainer.Panel2.Controls.Add(this.edOut);
+      this.edOutContainer.Size = new System.Drawing.Size(696, 73);
+      this.edOutContainer.SplitterDistance = 366;
+      this.edOutContainer.TabIndex = 44;
+      // 
+      // edTradeHist
+      // 
+      this.edTradeHist.Dock = System.Windows.Forms.DockStyle.Fill;
+      this.edTradeHist.Location = new System.Drawing.Point(0, 0);
+      this.edTradeHist.Margin = new System.Windows.Forms.Padding(2);
+      this.edTradeHist.Multiline = true;
+      this.edTradeHist.Name = "edTradeHist";
+      this.edTradeHist.Size = new System.Drawing.Size(366, 73);
+      this.edTradeHist.TabIndex = 41;
+      // 
+      // edOut
+      // 
+      this.edOut.Dock = System.Windows.Forms.DockStyle.Fill;
+      this.edOut.Location = new System.Drawing.Point(0, 0);
+      this.edOut.Margin = new System.Windows.Forms.Padding(2);
+      this.edOut.Multiline = true;
+      this.edOut.Name = "edOut";
+      this.edOut.Size = new System.Drawing.Size(326, 73);
+      this.edOut.TabIndex = 37;
+      // 
       // Form1
       // 
       this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
       this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-      this.ClientSize = new System.Drawing.Size(611, 369);
+      this.ClientSize = new System.Drawing.Size(696, 514);
+      this.Controls.Add(this.edOutContainer);
       this.Controls.Add(this.btnBuy);
       this.Controls.Add(this.btnExit);
       this.Controls.Add(this.edLastPrice);
-      this.Controls.Add(this.edTradeHist);
       this.Controls.Add(this.cbTrack);
       this.Controls.Add(this.edQuantity);
       this.Controls.Add(this.label3);
@@ -264,7 +288,6 @@ namespace OracleAlpha
       this.Controls.Add(this.textBox3);
       this.Controls.Add(this.textBox2);
       this.Controls.Add(this.textBox1);
-      this.Controls.Add(this.edOut);
       this.Margin = new System.Windows.Forms.Padding(2);
       this.Name = "Form1";
       this.Text = "Crypto Rockets  ADA";
@@ -275,14 +298,18 @@ namespace OracleAlpha
       this.MouseDown += new System.Windows.Forms.MouseEventHandler(this.Form1_MouseDown);
       ((System.ComponentModel.ISupportInitialize)(this.edQuantity)).EndInit();
       ((System.ComponentModel.ISupportInitialize)(this.edLastPrice)).EndInit();
+      this.edOutContainer.Panel1.ResumeLayout(false);
+      this.edOutContainer.Panel1.PerformLayout();
+      this.edOutContainer.Panel2.ResumeLayout(false);
+      this.edOutContainer.Panel2.PerformLayout();
+      ((System.ComponentModel.ISupportInitialize)(this.edOutContainer)).EndInit();
+      this.edOutContainer.ResumeLayout(false);
       this.ResumeLayout(false);
       this.PerformLayout();
 
     }
 
     #endregion
-
-    private System.Windows.Forms.TextBox edOut;
     private System.Windows.Forms.Label label3;
     private System.Windows.Forms.Label label2;
     private System.Windows.Forms.Label label1;
@@ -293,10 +320,12 @@ namespace OracleAlpha
     private System.Windows.Forms.Timer timer1;
     private System.Windows.Forms.NumericUpDown edQuantity;
     private System.Windows.Forms.CheckBox cbTrack;
-    private System.Windows.Forms.TextBox edTradeHist;
     private System.Windows.Forms.NumericUpDown edLastPrice;
     private System.Windows.Forms.Button btnExit;
     private System.Windows.Forms.Button btnBuy;
+    private System.Windows.Forms.SplitContainer edOutContainer;
+    private System.Windows.Forms.TextBox edTradeHist;
+    private System.Windows.Forms.TextBox edOut;
   }
 }
 
