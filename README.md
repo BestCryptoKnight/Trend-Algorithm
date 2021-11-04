@@ -12,20 +12,20 @@
     - Mainform  
 
   - AppCrypto
-    - INI file support objects for file IO. thanks https://www.codeproject.com/Articles/20120/INI-Files  by Jacek Gajek 
-    - CObjects  Concurrent dictionary as the basic object.  
-    - CQueue  CObject decendant representing a Queue base built with concurrency in mind.
+    - CObjects Concurrent dictionary as the basic object.  
+    - CQueue  CObject decendant representing a Queue built with concurrency in mind.
     - CCache  similar object representing a Cache built with concurrency in mind. 
     - CAvgDecimalCache saves a set amount of decimals.  
+    - INI file support objects for IO. [by Jacek Gajek](https://www.codeproject.com/Articles/20120/INI-Files)
     - CFileDictionary is a Persistant Dictionary object 
     - SecureStore password derived AES encrypted settings file dictionary
     - CMarkets virtual model dictionary used to track the feed data. 
-    - CPositions virtual balances
+    - CPositions persistant virtual balances to simulate holding positions
 
-  - StaticExtensions library of helper extensions I use. https://github.com/mmeents/StaticExtensions
+  - [StaticExtensions](https://github.com/mmeents/StaticExtensions) library of helper extensions I use. 
         
 ## Chapter 2. Market Viewer
-  - Viewer App
+  - Viewer App a C# winforms application
     - Secure Settings
       - Password derived key user knows unlocks the AES encrypted settings files.  (where exchange API keys are stored.)
       - Exchange API keys are stored as AES encrypted values in Ini files within the ProgramData folders on the deployment computer.    
