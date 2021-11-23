@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AppCryptoTester", "AppCrypt
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AppCrypto", "..\AppCrypto\AppCrypto.csproj", "{29DC6F29-A322-40E2-8B49-6222AE540B72}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StaticExtensions", "..\..\..\StaticExtensions\StaticExtensions.csproj", "{092C6ABA-9135-4319-A885-F89E7F4ADE93}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{29DC6F29-A322-40E2-8B49-6222AE540B72}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{29DC6F29-A322-40E2-8B49-6222AE540B72}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{29DC6F29-A322-40E2-8B49-6222AE540B72}.Release|Any CPU.Build.0 = Release|Any CPU
+		{092C6ABA-9135-4319-A885-F89E7F4ADE93}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{092C6ABA-9135-4319-A885-F89E7F4ADE93}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{092C6ABA-9135-4319-A885-F89E7F4ADE93}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{092C6ABA-9135-4319-A885-F89E7F4ADE93}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

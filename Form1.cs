@@ -341,7 +341,7 @@ namespace OracleAlpha {
                 if (btnX == iX) {
                   BuyQuote = sCoin;
                   BuyBase = Positions.BiggestBaseCoin();
-                  string sQuoteMarket = BuyBase+'-'+BuyQuote;
+                  string sQuoteMarket = BuyBase == BuyQuote ? "USD" + "-" +BuyQuote : BuyBase+"-"+BuyQuote;
                   CMarket cm = Markets.Coins[sCoin][sQuoteMarket];
                   if (!cm.isNull()&&(cm.Ask.toDecimal() != 0))
                   edLastPrice.Value = cm.Ask.toDecimal();
@@ -559,7 +559,7 @@ namespace OracleAlpha {
             es = "301";
             foreach (string sCoin in ByAvgChange) {
               iCurCoin += 1;
-              if (iCurCoin > 2) break;
+              if (iCurCoin > 3) break;
               es = "302";
               string[] KeysByPrice = Markets.Coins[sCoin].KeysByPriceDelta();
               Color aC = Markets.Coins[sCoin].CoinColor;
@@ -640,8 +640,7 @@ namespace OracleAlpha {
           es = "400";
           bg.Graphics.DrawString(DateTime.Now.ToStrDateMM() +
             " " + UpdateNo.toString() +
-            "-" + NextUpdateAvg.Value.Subtract(DateTime.Now).TotalSeconds.toInt32().ToString() +
-            " s:" +  " "+ LastMessage , 
+            "-" + NextUpdateAvg.Value.Subtract(DateTime.Now).TotalSeconds.toInt32().ToString() + " s:" +  " "+ LastMessage , 
             fCur8, Brushes.WhiteSmoke, Convert.ToSingle(fWidth * 0.015), Convert.ToSingle(fHeight * 0.015));
 
           if ((iOpMode>=10)&&(BuyQuote != "")) {
@@ -658,9 +657,10 @@ namespace OracleAlpha {
                Convert.ToInt32(iCW * 20),
                Convert.ToInt32(iRowH * 20)
              ));
-            string sOut = (iOpMode==10? " Buy " + BuyQuote + " with " + BuyBase : " Sell " + BuyQuote + " for " + BuyBase);
-            bg.Graphics.DrawString( sOut, fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft + iCW*3.5), Convert.ToSingle(grTop + iRowH.toDecimal() * 0.5m));
-
+            string sOptions = Positions.GetValidBaseByQuote(BuyQuote);
+            string sOut = (iOpMode==10? " Buy " + BuyQuote + " with " + BuyBase : " Sell " + BuyQuote + " for " + BuyBase )+" or "+sOptions;
+            bg.Graphics.DrawString( sOut, fCur8, Brushes.WhiteSmoke, 
+              Convert.ToSingle(iLeft + iCW*3.5), Convert.ToSingle(grTop + iRowH.toDecimal() * 0.5m));
 
             bg.Graphics.DrawString(" Quantity " + BuyQuote,
               fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft + iCW * 10), Convert.ToSingle(grTop + iRowH.toDecimal() * 4));
@@ -679,10 +679,8 @@ namespace OracleAlpha {
             bg.Graphics.DrawString(" Est (Total - fee): " + (dTotal - dTradeFee).toStr8() + BuyBase,
               fCur8, Brushes.WhiteSmoke, Convert.ToSingle(iLeft + iCW * 10), Convert.ToSingle(grTop + iRowH.toDecimal() * 11));
 
-
-
-
           }
+          
           es = "500";
           #region draw positions
           iCount = 0;
@@ -713,6 +711,7 @@ namespace OracleAlpha {
               bg.Graphics.DrawString(sRow, fCur8, sbaa, 
                 Convert.ToSingle(iLeft.toDecimal() + iWM * iCount - (3 * iCW / 8).toDecimal()), 
                 Convert.ToSingle(iRow - (iRowH * 4)));
+
               bg.Graphics.DrawString(sCoin, fCur8, abmm, 
                 Convert.ToSingle(iLeft.toDecimal() + iWM * iCount - (3 * iCW / 8).toDecimal()), 
                 Convert.ToSingle(iRow - (iRowH * 4)));

@@ -58,8 +58,8 @@ namespace AppCrypto {
       string sPUS = sPack.ParseString(" ", 5);
       string sFBC = sPack.ParseString(" ", 6);
       string sFUS = sPack.ParseString(" ", 7);
-      string sOpened = sPack.ParseString(" ", 8);
-      string sClosed = sPack.ParseString(" ", 9);
+      string sOpened = sPack.ParseString(" ", 8).toBase64DecryptStr(); 
+      string sClosed = sPack.ParseString(" ", 9).toBase64DecryptStr(); 
       string sSource = sPack.ParseString(" ", 10).toBase64DecryptStr();
       string sExits = sPack.ParseString(" ", 11).toBase64DecryptStr();
       CPosition r = new CPosition(aOwner, sAsset, sPUS.toDecimal(), sPBC.toDecimal(), sFBC.toDecimal(), sFUS.toDecimal(), sQuantity.toDecimal());
@@ -212,6 +212,16 @@ namespace AppCrypto {
         aCostSum += wp.Quantity * wp.PriceBaseCur + wp.FeeBaseCur;
       }
       r = aQuantitySum != 0 ? aCostSum / aQuantitySum : 0;
+      return r;
+    }
+
+    public string GetValidBaseByQuote(string sQuoteCoin) { 
+      string r = "";
+      CMarketList ml = Markets.Coins[sQuoteCoin];
+      foreach(string m in ml.Keys ) { 
+        string aBC = m.ParseFirst("-");
+        r += " "+(aBC==sQuoteCoin? m.ParseLast("-"): aBC);
+      }
       return r;
     }
 

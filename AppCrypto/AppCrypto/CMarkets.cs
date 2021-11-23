@@ -10,7 +10,10 @@ using StaticExtensions;
 namespace AppCrypto {
   public class CMarket : CObject {
     public CMarkets Owner;
-    public string MarketName { get { return base["MarketName"].toString(); } set { base["MarketName"] = value; } }
+    public string MarketName { 
+      get { return base["MarketName"].toString(); } 
+      set { base["MarketName"] = value; } 
+    }
     public string QuoteCur { get { return base["MarketName"].toString().ParseLast("-"); } }
     public string BaseCur { get { return base["MarketName"].toString().ParseFirst("-"); } }
 
@@ -27,7 +30,7 @@ namespace AppCrypto {
       }
       set {
         if(value != 0) { 
-          CAvgDecimalCache aAsk = ((CAvgDecimalCache)base["Ask"]);
+          CAvgDecimalCache aAsk = (CAvgDecimalCache)base["Ask"];
           aAsk.Add(value);
           decimal aAvg = aAsk.toAvg();
           this.AskAvg = aAvg;
