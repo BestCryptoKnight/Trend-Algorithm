@@ -29,20 +29,19 @@
     - Secure Settings
       - Password derived key user knows unlocks the AES encrypted settings files.  (where exchange API keys are stored.)
       - Exchange API keys are stored as AES encrypted values in Ini files within the ProgramData folders on the deployment computer.    
-    - Market Data Structure
-      - Markets to track are identified in code on main form as string[] DefMarketList 
-    - Subscription Management
-      - From DefMarketList we open tic socket subscriptions for each.  
     - Feeds Processing
+      - Subscription Management
+        - From DefMarketList we open tic socket subscriptions for each.      
       - Configuring the sockets to report events to the DoTickersLandingAdd 
         - TickersLanding is a queue of tickers and code to transform the details into the Markets data structure.  
-      - Processing the data. 
-        - The Timer is the heart beat that runs the display refresh code.
-        - The data is the Markets and Positions structures.    
+      - The Timer is the display refresh rate around 16fps .
+        - The data drawn is the Markets and Positions structures.        
+    - Market Data Structure
+      - Markets to track are identified in code on main form as string[] DefMarketList 
+      - Markets data structure is a dictionary of Coins each of which is a list of Dictionary Markets each of which are either a Market or the inverse market type. Inverse meaning a special class of market where all feed data is saved as 1/value.     
     - Trade Simulating
       - Trade virtual positions at current market rates.   
       - needs to add Order Placing and Feeds processing when the order is crossed does simulated trade. 
-
     - Signal Production
       - needs to add Trade Signal design and development platform. 
 
