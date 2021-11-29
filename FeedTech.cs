@@ -26,6 +26,7 @@ namespace OracleAlpha {
       Owner = aOwner;
       TheUpdate = aObj;
       Markets = aMarkets;
+      Id = aId;
 
       Worker = new BackgroundWorker();
       Worker.WorkerSupportsCancellation = false;

@@ -2,6 +2,7 @@
 using System;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using AppCrypto;
 using StaticExtensions;
 
@@ -14,7 +15,9 @@ namespace AppCryptoTester {
 
     [TestMethod]
     public void LoadTest() {
+#pragma warning disable CS0219 // The variable 'TestPsw' is assigned but its value is never used
       string TestPsw = "r2d2";
+#pragma warning restore CS0219 // The variable 'TestPsw' is assigned but its value is never used
 
       string SettingsFilePath = DllExt.MMConLocation();
       if (!Directory.Exists(SettingsFilePath)) Directory.CreateDirectory(SettingsFilePath);
@@ -82,6 +85,47 @@ namespace AppCryptoTester {
     }
 
     [TestMethod]
+    public void PositionReport() {
+
+
+      // CBalances BookA = new CBalances( DefMarketList.toCObject() );
+
+      CMarkets aMarkets = GetSimMarkets();
+      string SettingsFilePath = DllExt.MMConLocation();
+      //CPositions BookA = new CPositions(aMarkets, "C:\\ProgramData\\MMCommons\\TestPos00.ini");
+      CPositions BookA = new CPositions(aMarkets, SettingsFilePath + "\\" + CallSign + "Wallet.ini");
+      var ii = BookA.Where(i=> ((CPosition)i.Value).Asset!="USD" && ((CPosition)i.Value).Status==PositionStatus.closed );
+
+      foreach(var x in ii) { 
+        CPosition P = ((CPosition)x.Value);        
+        decimal PBuyPrice = P.PriceUSDEst;
+        decimal PExitPrice = 0;
+
+        long[] ISou = P.SourcePositions.Keys.ToArray();
+        Console.WriteLine(((P.Opened.isNull())?"": P.Opened.toDateTime()+" ")+P.Asset + " " + P.Quantity.toStr8() + " " + PBuyPrice);
+        decimal Cost = 0;
+        foreach (long k in ISou) {
+          CPosition K = P.SourcePositions[k];
+          Cost = Cost + K.Quantity;
+          Console.WriteLine("  Sou: " + K.Asset + " " + K.Quantity + " " + K.PriceBaseCur.toStr8());
+        }
+
+        long[] IExits = P.Exits.Keys.ToArray();        
+        decimal Sold = 0;
+        foreach(long k in IExits) { 
+          CPosition K = P.Exits[k];
+          Sold = Sold + K.Quantity;
+          Console.WriteLine("  Exit: "+ K.Asset+" "+K.Quantity+" "+K.PriceBaseCur.toStr8() ); 
+        }
+        Console.WriteLine("  "+P.Asset +" "+Cost.toStr4()+" "+Sold.toStr4()+ 
+          " " +((Cost > Sold) ? (Cost-Sold).toStr8() +" loss" : (Sold-Cost).toStr8()+" gains")
+         );
+        
+      }
+      
+    } 
+
+      [TestMethod]
     public void PositionTests() {
            
 
@@ -166,8 +210,27 @@ namespace AppCryptoTester {
 
     [TestMethod]
     public void PositionPersistance() {
-      
+      CMarkets aMarkets = GetSimMarkets();
+      decimal BookTotal = 0;
+      CPositions BookA = new CPositions(aMarkets, "C:\\ProgramData\\MMCommons\\TestPos00.ini");
+      string sAssets = "";
+      if (BookA.Count > 0) { 
+        
+        foreach(long x in BookA.Keys) { 
+          if (BookA[x].Status == PositionStatus.open) {
+            if (!sAssets.Contains(BookA[x].Asset)){
+              sAssets = sAssets + " "+ BookA[x].Asset;
+            }  
+          }
+        }
+        foreach(string s in sAssets.Split(' ')) {
+          BookTotal = BookTotal + s=="USD"? BookA.Balance(s) : BookA.AvgPrice(s) * BookA.Balance(s);  
+        }
+        
+        
+      }
 
+      Console.WriteLine("Book total:"+BookTotal.toStr2());
 
     }
   }

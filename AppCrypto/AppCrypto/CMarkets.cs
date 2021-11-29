@@ -321,7 +321,7 @@ namespace AppCrypto {
         "#7162FF","#735EFF","#755AFF","#7756FF","#7952FF", "#7B4EFF","#7D4AFF","#7F46FF","#8142FF","#833EFF",
         "#853AFF"};
     public Color GetCoinColor(string aCoin) {
-      Color a = ColorTranslator.FromHtml("#42E2B8");
+      Color a;
       switch (aCoin) {
         case "ADA": a = ColorTranslator.FromHtml("#2291FF"); break;
         case "USD": a = ColorTranslator.FromHtml("#42E2B8"); break;
@@ -345,7 +345,7 @@ namespace AppCrypto {
 
     public decimal AvgPriceUSD {
       get {
-        Decimal r = 0, x = 0, c = 0;
+        Decimal r = 0, x, c;
         if (Coin == "USD") { return 1;}
         else if (Coin == "BTC") { return Owner.Coins["BTC"]["USD-BTC"].Ask; }
         else { 
@@ -357,7 +357,7 @@ namespace AppCrypto {
             } else {           
               x = ((CMarket)base[sMarket]).Ask;
             }
-            r = r + x;
+            r += x;
           }
           return ((base.Keys.Count > 0) ? r / base.Keys.Count : 0);
         }
@@ -449,7 +449,7 @@ namespace AppCrypto {
     }
 
     public Decimal ToUSD(string aCur, Decimal aCurValue) {
-      Decimal aRet = 0;
+      Decimal aRet;
       switch (aCur) {
         case "USD":
           aRet = aCurValue;

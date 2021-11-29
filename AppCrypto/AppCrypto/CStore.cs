@@ -19,9 +19,10 @@ namespace AppCrypto {
       string sResult = "";
       try {
         AesCryptoServiceProvider aASP = new AesCryptoServiceProvider();
-        AesManaged aes = new AesManaged();
-        aes.Key = KeyA.toByteArray();
-        aes.IV = KeyB.toByteArray();
+        AesManaged aes = new AesManaged {
+          Key = KeyA.toByteArray(),
+          IV = KeyB.toByteArray()
+        };
         MemoryStream ms = new MemoryStream();
         CryptoStream encStream = new CryptoStream(ms, aes.CreateEncryptor(), CryptoStreamMode.Write);
         StreamWriter sw = new StreamWriter(encStream);
@@ -40,9 +41,10 @@ namespace AppCrypto {
       string val = "";
       try {
         AesCryptoServiceProvider aASP = new AesCryptoServiceProvider();
-        AesManaged aes = new AesManaged();
-        aes.Key = KeyA.toByteArray();
-        aes.IV = KeyB.toByteArray();
+        AesManaged aes = new AesManaged {
+          Key = KeyA.toByteArray(),
+          IV = KeyB.toByteArray()
+        };
         MemoryStream ms = new MemoryStream(sAESCipherText.toByteArray());
         CryptoStream encStream = new CryptoStream(ms, aes.CreateDecryptor(), CryptoStreamMode.Read);
         StreamReader sr = new StreamReader(encStream);

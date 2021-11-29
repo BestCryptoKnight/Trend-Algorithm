@@ -131,7 +131,8 @@ namespace OracleAlpha {
       timer1.Enabled = false;
       SaveEditors();
       if ((!FirstTimeLoad) && (BSC is BittrexSocketClient)) {
-          await BSC.UnsubscribeAll();
+          await BSC.UnsubscribeAllAsync();
+        
       }
     }
 
@@ -159,7 +160,9 @@ namespace OracleAlpha {
     }
        
 
+#pragma warning disable CS0414 // The field 'Form1.LoadingEditors' is assigned but its value is never used
     private Boolean LoadingEditors = false;
+#pragma warning restore CS0414 // The field 'Form1.LoadingEditors' is assigned but its value is never used
     private void LoadEditors() {
       LoadingEditors = true;
       if (Settings is SecureStore)
@@ -744,9 +747,7 @@ namespace OracleAlpha {
 
     }
 
-    void DoTickersLandingAdd(BittrexTick aObj){      
-      TickersLanding.AddTic(aObj);
-    }
+
     private void btnContinue_Click(object sender, EventArgs e)
     {
         string es = "0";
@@ -815,6 +816,10 @@ namespace OracleAlpha {
         }
 
         DoUpdateControlVisibility();
+    }
+
+    void DoTickersLandingAdd(CryptoExchange.Net.Sockets.DataEvent<BittrexTick> aObj) {      
+      TickersLanding.AddTic(aObj.Data);
     }
 
     #region Update Timer

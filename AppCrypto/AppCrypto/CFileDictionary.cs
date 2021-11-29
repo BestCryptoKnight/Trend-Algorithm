@@ -5,8 +5,8 @@ namespace AppCrypto
 {
 
   public class CFileDictionary : CObject {
-    string FileName;
-    IniFile f;
+    readonly string FileName;
+    readonly IniFile f;
 
     public CFileDictionary(string sFileName) : base() {
       FileName = sFileName;
@@ -15,7 +15,7 @@ namespace AppCrypto
 
     public void LoadValues() {
       foreach (string s in this.getVarNames()) {
-        string ss = this[s];
+        _ = this[s];
       }
     }
 
@@ -46,7 +46,7 @@ namespace AppCrypto
       f["Values"].DeleteKey(VarName);
       f.Save(FileName);
       if (this.ContainsKey(VarName)) {
-        this.TryRemove(VarName, out object value);
+        this.TryRemove(VarName, out _);
       }
     }
 

@@ -106,8 +106,7 @@ namespace AppCrypto{
     }
     public void Remove(decimal aKey) {
       if (Contains(aKey)) {
-        object outcast;
-        base.TryRemove(aKey, out outcast);
+        base.TryRemove(aKey, out _);
       }
     }
     public decimal ElementKeyAt(Int32 iIndex) {

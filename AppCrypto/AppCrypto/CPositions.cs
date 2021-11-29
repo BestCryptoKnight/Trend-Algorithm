@@ -27,7 +27,7 @@ namespace AppCrypto {
     public decimal FeeBaseCur;
     public decimal FeeUSDEst;
     public decimal Quantity;
-    public decimal TotalUSD { get { return PriceUSDEst * Quantity + FeeUSDEst;} }
+    public decimal TotalUSD { get { return Asset=="USD" ? Quantity : PriceUSDEst * Quantity + FeeUSDEst;} }
     public decimal TotalBaseCur {get { return PriceBaseCur * Quantity + FeeBaseCur;} }
     public string sSPTemp = "";
     public CPositions SourcePositions;
@@ -62,11 +62,12 @@ namespace AppCrypto {
       string sClosed = sPack.ParseString(" ", 9).toBase64DecryptStr(); 
       string sSource = sPack.ParseString(" ", 10).toBase64DecryptStr();
       string sExits = sPack.ParseString(" ", 11).toBase64DecryptStr();
-      CPosition r = new CPosition(aOwner, sAsset, sPUS.toDecimal(), sPBC.toDecimal(), sFBC.toDecimal(), sFUS.toDecimal(), sQuantity.toDecimal());
-      r.SelfID = sSelfID.toInt64();
-      r.Status = (sStatus=="open"?PositionStatus.open:PositionStatus.closed);
-      r.sSPTemp = sSource=="NULL"?"":sSource;
-      r.sETemp = sExits=="NULL"?"": sExits;
+      CPosition r = new CPosition(aOwner, sAsset, sPUS.toDecimal(), sPBC.toDecimal(), sFBC.toDecimal(), sFUS.toDecimal(), sQuantity.toDecimal()) {
+        SelfID = sSelfID.toInt64(),
+        Status = (sStatus == "open" ? PositionStatus.open : PositionStatus.closed),
+        sSPTemp = sSource == "NULL" ? "" : sSource,
+        sETemp = sExits == "NULL" ? "" : sExits
+      };
       if (sOpened == "NULL") {
         r.Opened = null;
       } else {
@@ -226,7 +227,6 @@ namespace AppCrypto {
     }
 
     public string BiggestBaseCoin() {
-      string r = "";
       decimal bUSD = Balance("USD");
       decimal bBTC = Markets.ToUSD("BTC", Balance("BTC"));      
       return bUSD > bBTC ? "USD" : "BTC";
@@ -336,44 +336,5 @@ namespace AppCrypto {
       }
     }
   }
-
-
-/*
-  public class CCurrency : CObject {
-    public CBalances Owner;
-    public string Currency { get { return base["Currency"].toString(); } set { base["Currency"] = value; } }
-    public decimal Available { get { return base["Available"].toDecimal(); } set { base["Available"] = value; } }
-    public decimal Balance { get { return base["Balance"].toDecimal(); } set { base["Balance"] = value; } }
-
-    public CPositions Positions;
-
-    public CCurrency(CBalances aOwner, string aCurrency, decimal aBalance, decimal aAvailable) : base() {
-      Owner = aOwner;
-      Positions = new CPositions(Owner.Markets);
-      Currency = aCurrency;
-      Available = aAvailable;
-      Balance = aBalance;
-    }
-  }
-  public class CBalances : CObject {
-
-    public CMarkets Markets;
-    public CBalances(CMarkets aMarkets) : base() {
-      Markets = aMarkets;
-    }
-    public new CCurrency this[string aCur] {
-      get {
-        try {
-          return (CCurrency)base[aCur];
-        } catch {
-          base[aCur] = new CCurrency(this, aCur, 0, 0);
-          return (CCurrency)base[aCur];
-        }
-      }
-      set { base[aCur] = value; }
-    }
-    
-
-  }  */
 
 }
