@@ -319,8 +319,7 @@ namespace AppCrypto {
               wp.Status = PositionStatus.closed;
               wp.Closed = DateTime.Now;
             } else break;
-          } else { // AmountToFind > shard 
-                   // mark consumed.
+          } else { // AmountToFind > shard, mark consumed.
             AmountToFind -= wp.Quantity;
             NewPosition.SourcePositions[wp.SelfID]=(wp);
             wp.Status = PositionStatus.closed;

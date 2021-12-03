@@ -51,21 +51,18 @@ namespace AppCryptoTester {
     }
 
     private CMarkets GetSimMarkets() {
+
       string[] DefMarketList = {
-        "USD-BTC", "USD-ETH", "BTC-ETH"
-//        "USD-ADA", "BTC-ADA", "ETH-ADA",
-//        "USD-LINK", "BTC-LINK", "ETH-LINK"
-       };      
-      CMarkets r = new CMarkets(DefMarketList.toCObject());
-      r["USD-BTC"].Ask = 47000;
-      r["USD-BTC"].Bid = 46969;
+        "USD-BTC",
+        "USD-ADA", "BTC-ADA", 
+        "USD-LTC", "BTC-LTC",
+        "USD-DOGE", "BTC-DOGE"
+      };
 
-      r["USD-ETH"].Ask = 3533; 
-      r["USD-ETH"].Bid = 3532;
+      string SettingsFilePath = DllExt.MMConLocation();
 
-      r["BTC-ETH"].Ask = 0.0752m; 
-      r["BTC-ETH"].Bid = 0.0744m;
-     
+      CMarkets r = new CMarkets(DefMarketList.toCObject(), SettingsFilePath + "\\" + CallSign + "Markets.ini");
+           
       return r;
     }
 
@@ -84,9 +81,45 @@ namespace AppCryptoTester {
 
     }
 
-    [TestMethod]
-    public void PositionReport() {
 
+    [TestMethod]
+    public void PositionReportOpen() {
+
+      // CBalances BookA = new CBalances( DefMarketList.toCObject() );
+
+      CMarkets aMarkets = GetSimMarkets();
+      string SettingsFilePath = DllExt.MMConLocation();
+      //CPositions BookA = new CPositions(aMarkets, "C:\\ProgramData\\MMCommons\\TestPos00.ini");
+      CPositions BookA = new CPositions(aMarkets, SettingsFilePath + "\\" + CallSign + "Wallet.ini");
+      var ii = BookA.Where(i => ((CPosition)i.Value).Status == PositionStatus.open);
+
+      foreach (var x in ii) {
+        CPosition P = ((CPosition)x.Value);
+        decimal PBuyPrice = P.PriceUSDEst;
+
+        long[] ISou = P.SourcePositions.Keys.ToArray();
+        Console.WriteLine(((P.Opened.isNull()) ? "" : P.Opened.toDateTime() + " ") + P.Asset + " " + P.Quantity.toStr8() + " at " + PBuyPrice);
+        decimal Cost = 0;
+        foreach (long k in ISou) {
+          CPosition K = P.SourcePositions[k];
+          if (K.Asset == "USD") {
+            Cost = Cost + K.Quantity;
+            Console.WriteLine("  Src : " + K.Asset + " " + K.Quantity);
+          } else {
+            Cost = Cost + K.Quantity * K.PriceUSDEst;
+            Console.WriteLine("  Src : " + K.Asset + " " + K.Quantity + " at " + K.PriceUSDEst.toStr4() + " " + (K.Quantity * K.PriceUSDEst).toStr4());
+          }
+
+        }
+       
+        Console.WriteLine("  " + P.Asset + " Cost: " + Cost.toStr4() );
+
+      }
+
+    }
+
+    [TestMethod]
+    public void PositionReportClosed() {
 
       // CBalances BookA = new CBalances( DefMarketList.toCObject() );
 
@@ -99,27 +132,38 @@ namespace AppCryptoTester {
       foreach(var x in ii) { 
         CPosition P = ((CPosition)x.Value);        
         decimal PBuyPrice = P.PriceUSDEst;
-        decimal PExitPrice = 0;
 
         long[] ISou = P.SourcePositions.Keys.ToArray();
-        Console.WriteLine(((P.Opened.isNull())?"": P.Opened.toDateTime()+" ")+P.Asset + " " + P.Quantity.toStr8() + " " + PBuyPrice);
+        Console.WriteLine(((P.Opened.isNull())?"": P.Opened.toDateTime()+" ")+P.Asset + " " + P.Quantity.toStr8() + " at " + PBuyPrice);
         decimal Cost = 0;
         foreach (long k in ISou) {
           CPosition K = P.SourcePositions[k];
-          Cost = Cost + K.Quantity;
-          Console.WriteLine("  Sou: " + K.Asset + " " + K.Quantity + " " + K.PriceBaseCur.toStr8());
+          if (K.Asset == "USD") {
+            Cost = Cost + K.Quantity;
+            Console.WriteLine("  Src : " + K.Asset + " " + K.Quantity   );
+          } else {
+            Cost = Cost + K.Quantity * K.PriceUSDEst;
+            Console.WriteLine("  Src : " + K.Asset + " " + K.Quantity + " at "+ K.PriceUSDEst.toStr4()+" " + (K.Quantity * K.PriceUSDEst).toStr4() );
+          }          
+          
         }
 
         long[] IExits = P.Exits.Keys.ToArray();        
         decimal Sold = 0;
         foreach(long k in IExits) { 
           CPosition K = P.Exits[k];
-          Sold = Sold + K.Quantity;
-          Console.WriteLine("  Exit: "+ K.Asset+" "+K.Quantity+" "+K.PriceBaseCur.toStr8() ); 
+          if (K.Asset == "USD") { 
+            Sold = Sold + K.Quantity;
+            Console.WriteLine("  Exit: " + K.Asset + " " + K.Quantity +" at "+ K.PriceUSDEst.toStr4()  );
+          } else {
+            Sold = Sold + K.Quantity * K.PriceUSDEst;
+            Console.WriteLine("  Exit: " + K.Asset + " " + K.Quantity +" at "+K.PriceUSDEst.toStr4() +" "+ (K.Quantity * K.PriceUSDEst).toStr4());
+          }
+           
         }
-        Console.WriteLine("  "+P.Asset +" "+Cost.toStr4()+" "+Sold.toStr4()+ 
-          " " +((Cost > Sold) ? (Cost-Sold).toStr8() +" loss" : (Sold-Cost).toStr8()+" gains")
-         );
+        Console.WriteLine("  "+P.Asset +" Cost: "+Cost.toStr4()+" Sold:"+Sold.toStr4()+ 
+          " diff:" +((Cost > Sold) ? (Cost-Sold).toStr8() +" loss" : (Sold-Cost).toStr8()+" gains")
+        );
         
       }
       

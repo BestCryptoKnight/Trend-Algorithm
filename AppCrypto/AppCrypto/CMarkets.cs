@@ -226,7 +226,7 @@ namespace AppCrypto {
       aUC[aUC.Nonce] = aUC[aUC.Nonce] + HowMany;
     }
 
-    public CMarket(CMarkets aOwner, string sMarket) {
+    public CMarket(CMarkets aOwner, string sMarket, string DefAskBidPack) {
       Owner = aOwner;
       MarketName = sMarket;
       int aSize = 24;
@@ -263,12 +263,20 @@ namespace AppCrypto {
       adc = new CAvgDecimalCache { Size = aSize };
       base["UpdateCount"] = adc;
 
+      if ((DefAskBidPack != "")&&(DefAskBidPack.ParseCount(" ")==3)) {
+        Ask = DefAskBidPack.ParseString(" ", 1).toDecimal();
+        Bid = DefAskBidPack.ParseString(" ", 2).toDecimal();
+      }
+
+    }
+    public string Pack() { 
+      return MarketName+" "+ Ask.toStr8() +" "+ Bid.toStr8();      
     }
 
   }
 
   public class CInvMarket : CMarket {
-    public CInvMarket(CMarkets aOwner, string aMarket) : base(aOwner, aMarket) {
+    public CInvMarket(CMarkets aOwner, string aMarket, string DefAskBidPack) : base(aOwner, aMarket, DefAskBidPack) {
     }
     new public decimal Ask {
       get {
@@ -414,19 +422,49 @@ namespace AppCrypto {
 
   public class CMarkets : CObject {
     public decimal TradeFee = 0.0025m;
+    public string MarketDataFilePath;
+    public Boolean hasDataFile = false;
     public CObject MarketFilter;
     public CMarketCoins Coins;
-    public CMarkets(CObject aMarketFilter) : base() {
+    public CMarkets(CObject aMarketFilter, string aMarketDataFilePath) : base() {
       MarketFilter = aMarketFilter;
       Coins = new CMarketCoins();
+      MarketDataFilePath = aMarketDataFilePath;
+      IniFile f = null;
+      if (File.Exists(MarketDataFilePath)) {       
+        hasDataFile = true;
+        f = IniFile.FromFile(MarketDataFilePath);
+      }      
 
       foreach (string sMarket in MarketFilter.Keys) {
-        CMarket aM = new CMarket(this, sMarket);
+        string sDataPack = "";
+        if (hasDataFile) {
+          string s = f["LastAt"][sMarket];
+          if (s != "") {
+            sDataPack = s;
+          }          
+        }
+        CMarket aM = new CMarket(this, sMarket, sDataPack);
         base[sMarket] = aM;
         if (!(Coins[aM.QuoteCur] is CMarketList)) Coins[aM.QuoteCur] = new CMarketList(this, aM.QuoteCur);
         Coins[aM.QuoteCur][sMarket] = aM;
         if (!(Coins[aM.BaseCur] is CMarketList)) Coins[aM.BaseCur] = new CMarketList(this, aM.BaseCur);
-        Coins[aM.BaseCur][sMarket] = new CInvMarket(this, sMarket);
+        Coins[aM.BaseCur][sMarket] = new CInvMarket(this, sMarket, sDataPack);
+      }
+    }
+
+    public void Save() {
+      
+      IniFile f = IniFile.FromFile(MarketDataFilePath);
+      foreach (string sMarket in MarketFilter.Keys) {
+        string sBaseCur = sMarket.ParseFirst("-");
+        string sQuoteCur = sMarket.ParseLast("-");
+        f["LastAt"][sMarket] = Coins[sQuoteCur][sMarket].Pack();        
+      }
+      f.Save(MarketDataFilePath);
+
+      if (File.Exists(MarketDataFilePath)) {
+        hasDataFile = true;
       }
     }
     public new CMarket this[string aKey] {

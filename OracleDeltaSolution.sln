@@ -13,6 +13,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CryptoExchange.Net", "..\Cr
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AppCryptoTester", "AppCrypto\AppCryptoTester\AppCryptoTester.csproj", "{7AED1837-78A8-458F-A021-A52C584E2D98}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StaticExtensions", "..\StaticExtensions\StaticExtensions.csproj", "{092C6ABA-9135-4319-A885-F89E7F4ADE93}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{7AED1837-78A8-458F-A021-A52C584E2D98}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7AED1837-78A8-458F-A021-A52C584E2D98}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7AED1837-78A8-458F-A021-A52C584E2D98}.Release|Any CPU.Build.0 = Release|Any CPU
+		{092C6ABA-9135-4319-A885-F89E7F4ADE93}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{092C6ABA-9135-4319-A885-F89E7F4ADE93}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{092C6ABA-9135-4319-A885-F89E7F4ADE93}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{092C6ABA-9135-4319-A885-F89E7F4ADE93}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

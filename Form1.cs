@@ -104,7 +104,7 @@ namespace OracleAlpha {
         MarketFilterBittrex[sMarket.ParseReverse("-", "-")] = sMarket;
       }
 
-      Markets = new CMarkets(MarketFilter);
+      Markets = new CMarkets(MarketFilter, SettingsFilePath + "\\" + CallSign + "Markets.ini");
       iCoinCount = Markets.Coins.Keys.Count;
       Positions = new CPositions(Markets, SettingsFilePath + "\\"+CallSign+"Wallet.ini");
 
@@ -183,6 +183,8 @@ namespace OracleAlpha {
             Settings["LastCur"] = LastCur;
             Settings["LastPrice"] = LastPrice.toStr8();
         }
+
+        Markets.Save();
     }
 
    
