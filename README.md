@@ -36,7 +36,7 @@
         - From DefMarketList we open tic socket subscriptions for each market.      
         - When the Form is closed we close all sockets. 
       - Sockets report events to the DoTickersLandingAdd function. 
-        - TickersLanding is a queue of tickers and code to transform the details into the Markets data structure and then remove themselves from the queue.  
+        - TickersLanding is a [queue of tickers](https://github.com/mmeents/CryptoRockets/blob/7534a7bd72c11bf05cfe97c3e83e202c54ef8284/FeedTech.cs) and code to transform the details into the Markets data structure and then remove themselves from the queue.  
     - The Timer is the display refresh 16fps.  
       - The ReDraw is double buffer, draw on a image and then overlay image over forms canvas.  
       - UpdateControlVisibilityCallback is main resize and position function that moves form controls around based on the forms state.  
